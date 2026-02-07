@@ -51,8 +51,8 @@ The architecture follows **clean separation of concerns**, **role-based access c
 | ------------------ | ------------------ |
 | Runtime            | Node.js            |
 | Framework          | Express.js         |
-| Language           | TypeScript         |
-| Database           | MongoDB (Mongoose) |
+| Language           | JavaScript         |
+| Database           | Superbase (prisma) |
 | Cache / Rate Limit | Redis              |
 | Authentication     | JWT                |
 | Validation         | Zod / Joi          |
@@ -150,8 +150,6 @@ lms-backend/
 
 PORT=5000
 NODE_ENV=development
-
-MONGO_URI=mongodb://localhost:27017/lms
 
 JWT_SECRET=your_jwt_secret
 JWT_EXPIRES_IN=1d

@@ -1,7 +1,7 @@
 {
   "name": "lms_backend_api",
   "version": "1.0.0",
-  "description": "",
+  "description": "A **scalable, secure, and production-ready backend API** for a Learning Management System (LMS), built following **industry best practices**.  \r This project is designed as a **sellable capstone** and a strong **portfolio-grade backend system**.",
   "type": "module",
   "main": "src/app.js",
   "scripts": {
@@ -14,7 +14,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
@@ -27,5 +29,13 @@
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.3.0",
     "prettier": "^3.8.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FSA-22/lms_backend_api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/FSA-22/lms_backend_api/issues"
+  },
+  "homepage": "https://github.com/FSA-22/lms_backend_api#readme"
 }

@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { CLIENT_URL, NODE_ENV, PORT } from './config/env.js';
+import authRouter from './routes/auth.routes.js';
 
 const app = express();
 
@@ -30,6 +31,9 @@ app.use(express.urlencoded({ extended: true }));
 if (NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
+
+// routes
+app.use(authRouter);
 
 /*
    Health Check

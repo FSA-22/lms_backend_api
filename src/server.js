@@ -1,50 +1,23 @@
-import http from 'http';
-import app from './app.js';
 import { PORT, NODE_ENV } from './config/env.js';
+import app from './app.js';
 
-const server = http.createServer(app);
+// 1. CATCH BUGS IN CODE (Synchronous)
+process.on('uncaughtException', (err) => {
+  console.log('UNCAUGHT EXCEPTION! Shutting down...');
+  console.log(err.name, err.message);
+  process.exit(1);
+});
 
-server.listen(PORT, () => {
+// 2. START THE SERVER
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT} | Env: ${NODE_ENV}`);
 });
 
-/*
-   Graceful Shutdown
-*/
-
-const shutdown = (signal) => {
-  console.log(`\n${signal} received. Shutting down gracefully...`);
-
+// 3. CATCH BROKEN CONNECTIONS (Asynchronous)
+process.on('unhandledRejection', (err) => {
+  console.log('UNHANDLED REJECTION! Shutting down...');
+  console.log(err.name, err.message);
   server.close(() => {
-    console.log('HTTP server closed.');
-
-    // Close DB connections here if needed
-    // await prisma.$disconnect();
-    // await mongoose.connection.close();
-
-    process.exit(0);
-  });
-
-  // Force shutdown after timeout
-  setTimeout(() => {
-    console.error('Forcefully shutting down...');
     process.exit(1);
-  }, 10000);
-};
-
-/*
-   Process Event Listeners
-*/
-
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
-
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-  shutdown('uncaughtException');
-});
-
-process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled Rejection:', reason);
-  shutdown('unhandledRejection');
+  });
 });

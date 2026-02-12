@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { CLIENT_URL, NODE_ENV, PORT } from './config/env.js';
 import authRouter from './routes/auth.routes.js';
+import userRouter from './routes/user.routes.js';
 
 const app = express();
 
@@ -34,6 +35,7 @@ if (NODE_ENV !== 'production') {
 
 // routes
 app.use(authRouter);
+app.use(userRouter);
 
 /*
    Health Check

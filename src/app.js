@@ -7,6 +7,11 @@ import { CLIENT_URL, NODE_ENV, PORT } from './config/env.js';
 
 const app = express();
 
+import authRoutes from './routes/auth.routes.js';
+
+app.use('/api/auth', authRoutes);
+
+
 /*
    Core Middlewares
 */

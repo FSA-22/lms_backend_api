@@ -1,0 +1,238 @@
+
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+
+}
+
+
+
+// TENANT (COMPANY)
+
+
+model Tenant {
+id String @id @default(uuid())
+name String
+slug String @unique
+isActive Boolean @default(true)
+
+users User[]
+courses Course[]
+settings TenantSettings?
+subscription Subscription?
+
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+}
+
+// USER
+
+
+model User {
+id String @id @default(uuid())
+tenantId String
+firstName String
+lastName String
+email String
+password String
+isActive Boolean @default(true)
+
+roles UserRole[]
+enrollments Enrollment[]
+progress Progress[]
+results AssessmentResult[]
+
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+tenant Tenant @relation(fields: [tenantId], references: [id])
+courses Course[]
+
+@@unique([tenantId, email])
+}
+
+
+// ROLE (GLOBAL)
+
+model Role {
+id String @id @default(uuid())
+name String @unique
+
+users UserRole[]
+}
+
+
+
+// USER ROLE (JOIN TABLE)
+
+
+model UserRole {
+id String @id @default(uuid())
+userId String
+roleId String
+assignedAt DateTime @default(now())
+
+user User @relation(fields: [userId], references: [id])
+role Role @relation(fields: [roleId], references: [id])
+
+@@unique([userId, roleId])
+}
+
+// COURSE
+
+model Course {
+id String @id @default(uuid())
+tenantId String
+title String
+description String?
+isPublished Boolean @default(false)
+
+instructorId String
+
+lessons Lesson[]
+enrollments Enrollment[]
+assessments Assessment[]
+
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+tenant Tenant @relation(fields: [tenantId], references: [id])
+instructor User @relation(fields: [instructorId], references: [id])
+}
+
+// LESSON
+
+model Lesson {
+id String @id @default(uuid())
+courseId String
+title String
+content String?
+order Int
+
+progress Progress[]
+
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+course Course @relation(fields: [courseId], references: [id])
+
+@@unique([courseId, order])
+}
+
+// ENROLLMENT
+
+model Enrollment {
+id String @id @default(uuid())
+userId String
+courseId String
+enrolledAt DateTime @default(now())
+
+user User @relation(fields: [userId], references: [id])
+course Course @relation(fields: [courseId], references: [id])
+
+@@unique([userId, courseId])
+}
+
+// PROGRESS
+
+model Progress {
+id String @id @default(uuid())
+userId String
+lessonId String
+completed Boolean @default(false)
+completedAt DateTime?
+
+user User @relation(fields: [userId], references: [id])
+lesson Lesson @relation(fields: [lessonId], references: [id])
+
+@@unique([userId, lessonId])
+}
+
+// ASSESSMENT
+
+model Assessment {
+id String @id @default(uuid())
+courseId String
+title String
+type AssessmentType
+totalMarks Int
+
+results AssessmentResult[]
+
+createdAt DateTime @default(now())
+
+course Course @relation(fields: [courseId], references: [id])
+}
+
+// ASSESSMENT RESULT
+
+model AssessmentResult {
+id String @id @default(uuid())
+assessmentId String
+userId String
+score Float
+passed Boolean
+
+submittedAt DateTime @default(now())
+
+assessment Assessment @relation(fields: [assessmentId], references: [id])
+user User @relation(fields: [userId], references: [id])
+
+@@unique([assessmentId, userId])
+}
+
+// SUBSCRIPTION
+
+model Subscription {
+id String @id @default(uuid())
+tenantId String @unique
+planId String
+status SubscriptionStatus
+startedAt DateTime @default(now())
+expiresAt DateTime?
+
+tenant Tenant @relation(fields: [tenantId], references: [id])
+plan Plan @relation(fields: [planId], references: [id])
+}
+
+// PLAN (GLOBAL BILLING PLANS)
+
+model Plan {
+id String @id @default(uuid())
+name String @unique
+price Float
+maxUsers Int
+maxCourses Int
+subscriptions Subscription[]
+}
+
+// TENANT SETTINGS
+
+model TenantSettings {
+id String @id @default(uuid())
+tenantId String @unique
+logoUrl String?
+theme String?
+domain String?
+
+tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+// ENUMS
+
+enum AssessmentType {
+QUIZ
+EXAM
+ASSIGNMENT
+}
+
+enum SubscriptionStatus {
+ACTIVE
+CANCELLED
+EXPIRED
+}

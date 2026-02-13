@@ -108,3 +108,8 @@ config/local.*
 # project structure
 # ==============================
 project structure
+/src/generated/prisma
+
+/src/generated/prisma
+
+/src/generated/prisma

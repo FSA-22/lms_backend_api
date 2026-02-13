@@ -1,10 +1,13 @@
 import http from 'http';
 import app from './app.js';
 import { PORT, NODE_ENV } from './config/env.js';
+import { connectToDB, disConnectFromDB } from './databases/index.js';
 
 const server = http.createServer(app);
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
+  await connectToDB();
+
   console.log(`Server running on port ${PORT} | Env: ${NODE_ENV}`);
 });
 
@@ -15,12 +18,9 @@ server.listen(PORT, () => {
 const shutdown = (signal) => {
   console.log(`\n${signal} received. Shutting down gracefully...`);
 
-  server.close(() => {
+  server.close(async () => {
     console.log('HTTP server closed.');
-
-    // Close DB connections here if needed
-    // await prisma.$disconnect();
-    // await mongoose.connection.close();
+    await disConnectFromDB();
 
     process.exit(0);
   });

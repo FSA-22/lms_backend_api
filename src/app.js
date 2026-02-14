@@ -1,9 +1,9 @@
-import os from 'os';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { CLIENT_URL, NODE_ENV, PORT } from './config/env.js';
+import { CLIENT_URL, NODE_ENV } from './config/env.js';
+import authRouter from './routes/auth.route.js';
 
 const app = express();
 
@@ -32,26 +32,10 @@ if (NODE_ENV !== 'production') {
 }
 
 /*
-   Health Check
+   auths
 */
 
-app.get('/health', (req, res) => {
-  const networkInterfaces = os.networkInterfaces();
-  console.log(networkInterfaces, 'ips');
-
-  const ips = Object.values(networkInterfaces)
-    .flat()
-    .filter((details) => details.family === 'IPv4' && !details.internal)
-    .map((details) => details.address);
-
-  res.status(200).json({
-    success: true,
-    message: `API is running on port ${PORT}`,
-    uptime: process.uptime(),
-    timestamp: new Date(),
-    serverIPs: ips
-  });
-});
+app.use('/api/v1/auth', authRouter);
 
 /*
    404 Handler

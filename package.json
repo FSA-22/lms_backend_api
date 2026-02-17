@@ -14,9 +14,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bcrypt": "^6.0.0",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.4.0",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -25,13 +25,13 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
-    "pg": "^8.18.0"
+    "pg": "^8.18.0",
+    "prisma": "^6.19.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.3.0",
-
     "prettier": "^3.8.1"
   },
   "repository": {
@@ -42,8 +42,6 @@
     "url": "https://github.com/FSA-22/lms_backend_api/issues"
   },
   "homepage": "https://github.com/FSA-22/lms_backend_api#readme",
-    "prettier": "^3.8.1",
-    "prisma": "^7.4.0"
-  }
-
-
+  "prettier": "^3.8.1",
+  "prisma": "^7.4.0"
+}

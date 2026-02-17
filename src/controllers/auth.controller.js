@@ -1,8 +1,6 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
 import { generateSlug } from '../utils/slugify.js';
-import { EXPIRES_IN, JWT_SECRET } from '../config/env.js';
 import { generateToken } from '../utils/generateToken.js';
 
 export const registerTenant = async (req, res) => {
@@ -72,14 +70,12 @@ export const registerTenant = async (req, res) => {
     });
 
     // 7. Issue JWT
-    const token = jwt.sign(
-      {
-        userId: result.user.id,
-        tenantId: result.tenant.id
-      },
-      JWT_SECRET,
-      { expiresIn: EXPIRES_IN }
-    );
+    const token = generateToken({
+      userId: user.id,
+      tenantId: tenant.id,
+      tenant: slug,
+      role: role
+    });
 
     res.status(201).json({
       message: 'Tenant registered successfully',
@@ -166,6 +162,7 @@ export const adminLogin = async (req, res, next) => {
     const token = generateToken({
       userId: user.id,
       tenantId: tenant.id,
+      tenant: slug,
       role: user.roles
     });
 
@@ -223,12 +220,13 @@ export const loginUser = async (req, res, next) => {
       return res.status(403).json({ message: `Access denied: user is not a ${requestedRole}` });
     }
 
-    // 6️⃣ Generate JWT
-    const token = jwt.sign(
-      { userId: user.id, tenantId: tenant.id, roles },
-      process.env.JWT_SECRET,
-      { expiresIn: EXPIRES_IN }
-    );
+    // Generate JWT
+    const token = generateToken({
+      userId: user.id,
+      tenantId: tenant.id,
+      tenant: slug,
+      role: roles
+    });
 
     return res.status(200).json({
       message: 'Login successful',

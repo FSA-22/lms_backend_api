@@ -7,3 +7,4 @@ const userRouter = Router();
 userRouter.get('/:slug/users', authenticate, getCurrentUser);
 
 export default userRouter;
+getCurrentUser;

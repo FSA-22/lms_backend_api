@@ -2,11 +2,11 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET, EXPIRES_IN } from '../config/env.js';
 
 if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET is not defined ');
+  throw new Error('JWT_SECRET is not defined');
 }
 
 export const generateToken = (payload) => {
-  if (!payload?.userId || !payload?.tenantId) {
+  if (!payload?.userId || !payload?.tenantId || !payload?.tenant) {
     throw new Error('Invalid token payload');
   }
 
@@ -14,6 +14,7 @@ export const generateToken = (payload) => {
     {
       sub: payload.userId,
       tenantId: payload.tenantId,
+      tenant: payload.tenant,
       role: payload.role
     },
     JWT_SECRET,

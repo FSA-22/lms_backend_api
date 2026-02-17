@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { CLIENT_URL, NODE_ENV } from './config/env.js';
 import authRouter from './routes/auth.route.js';
+import userRouter from './routes/user.route.js';
+import courseRouters from './routes/course.route.js';
 
 const app = express();
 
@@ -36,6 +38,9 @@ if (NODE_ENV !== 'production') {
 */
 
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1', userRouter);
+
+app.use('/api/v1/courses', courseRouters);
 
 /*
    404 Handler

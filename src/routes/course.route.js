@@ -1,14 +1,19 @@
 import { Router } from 'express';
 
-import { createCourse } from '../controllers/course.controller.js';
+import { createCourse, getCourses } from '../controllers/course.controller.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
+import { authorize } from '../middlewares/authorize.middleware.js';
 
 const courseRouter = Router();
 
-// All course routes require authentication
-courseRouter.use(authenticate);
-
 // Create a course (INSTRUCTOR only)
-courseRouter.post('/', createCourse);
+courseRouter.post('/:slug/courses', authenticate, authorize('INSTRUCTOR'), createCourse);
+
+courseRouter.get(
+  '/:slug/courses',
+  authenticate,
+  authorize('ADMIN', 'INSTRUCTOR', 'STUDENT'),
+  getCourses
+);
 
 export default courseRouter;

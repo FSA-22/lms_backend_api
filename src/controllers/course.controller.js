@@ -1,22 +1,11 @@
 import { prisma } from '../lib/prisma.js';
 
 /**
- * Helper: check if user has required role
- */
-const hasRole = (userRoles, requiredRoles) =>
-  userRoles.some((r) => requiredRoles.includes(r.role.name));
-
-/**
  * Create a course
  */
 export const createCourse = async (req, res, next) => {
   try {
     const { title, description, isPublished } = req.body;
-
-    // Only INSTRUCTOR can create courses
-    if (!req.user || !hasRole(req.user.roles, ['INSTRUCTOR'])) {
-      return res.status(403).json({ message: 'Forbidden: Only INSTRUCTOR can create courses' });
-    }
 
     // Create course
     const course = await prisma.course.create({
@@ -29,8 +18,67 @@ export const createCourse = async (req, res, next) => {
       }
     });
 
+    console.log(`Course created: ${course.id} by user ${req.user.id} '${('Course', course)}'`);
+
     res.status(201).json({ message: 'Course created', course });
   } catch (err) {
     next(err);
+  }
+};
+
+export const getCourses = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 10, published } = req.query;
+
+    const pageNumber = parseInt(page, 10);
+    const pageSize = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * pageSize;
+
+    const tenantId = req.user.tenantId;
+    const userId = req.user.id;
+    const roles = req.user.roles;
+
+    let whereClause = {
+      tenantId
+    };
+
+    /*
+      Role-based visibility logic
+    */
+
+    // STUDENT → only published
+    if (roles.includes('STUDENT')) {
+      whereClause.isPublished = true;
+    }
+
+    // INSTRUCTOR → only their own courses
+    if (roles.includes('INSTRUCTOR') && !roles.includes('ADMIN')) {
+      whereClause.instructorId = userId;
+    }
+
+    // Optional filter override (for ADMIN only)
+    if (roles.includes('ADMIN') && published !== undefined) {
+      whereClause.isPublished = published === 'true';
+    }
+
+    const [courses, total] = await Promise.all([
+      prisma.course.findMany({
+        where: whereClause,
+        skip,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.course.count({ where: whereClause })
+    ]);
+
+    return res.status(200).json({
+      page: pageNumber,
+      limit: pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+      courses
+    });
+  } catch (error) {
+    next(error);
   }
 };

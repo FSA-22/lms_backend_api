@@ -12,31 +12,42 @@ export const authenticate = async (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
+    // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    const user = await prisma.user.findFirst({
-      where: {
-        id: decoded.sub,
-        tenantId: decoded.tenantId,
-        isActive: true
+    //  Check tenant slug from JWT vs URL
+    const tenantFromUrl = req.params.slug;
+
+    if (!decoded.tenant || decoded.tenant !== tenantFromUrl) {
+      return res
+        .status(403)
+        .json({ message: 'Access denied, you do not belong in this organization' });
+    }
+
+    // Optionally fetch user from DB (not for tenant check)
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.sub },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        isActive: true,
+        roles: { select: { role: { select: { name: true } } } }
       }
     });
 
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid token' });
+    if (!user || !user.isActive) {
+      return res.status(401).json({ message: 'Invalid user' });
     }
 
-    // We need to find a way to check if the user belongs to the tenant specified in the URL. This is a bit tricky because we don't want to query the database for every request just to check the tenant. One way to do this is to include the tenant slug in the JWT token when the user logs in, and then compare it with the slug in the URL.
-
-    // if (!user.tenant || req.params.slug !== user.tenant.slug) {
-    //   return res
-    //     .status(403)
-    //     .json({ message: 'Tenant mismatch, you do not belong in this organization' });
-    // }
-
-    req.user = user;
-
-    console.log('req.user:', req);
+    // Attach user and decoded token to request
+    req.user = {
+      ...user,
+      tenant: decoded.tenant,
+      tenantId: decoded.tenantId,
+      roles: user.roles.map((r) => r.role.name.toUpperCase())
+    };
 
     next();
   } catch (error) {

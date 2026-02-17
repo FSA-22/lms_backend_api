@@ -38,9 +38,9 @@ if (NODE_ENV !== 'production') {
 */
 
 app.use('/api/v1/auth', authRouter);
-app.use('/api/v1', userRouter);
 
-app.use('/api/v1/courses', courseRouters);
+app.use('/api/v1', userRouter);
+app.use('/api/v1/', courseRouters);
 
 /*
    404 Handler

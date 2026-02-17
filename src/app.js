@@ -1,11 +1,11 @@
-import os from 'os';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { CLIENT_URL, NODE_ENV, PORT } from './config/env.js';
-import authRouter from './routes/auth.routes.js';
-import userRouter from './routes/user.routes.js';
+import { CLIENT_URL, NODE_ENV } from './config/env.js';
+import authRouter from './routes/auth.route.js';
+import userRouter from './routes/user.route.js';
+import courseRouters from './routes/course.route.js';
 
 const app = express();
 
@@ -33,31 +33,14 @@ if (NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
-// routes
-app.use(authRouter);
-app.use(userRouter);
-
 /*
-   Health Check
+   auths
 */
 
-app.get('/health', (req, res) => {
-  const networkInterfaces = os.networkInterfaces();
-  console.log(networkInterfaces, 'ips');
+app.use('/api/v1/auth', authRouter);
 
-  const ips = Object.values(networkInterfaces)
-    .flat()
-    .filter((details) => details.family === 'IPv4' && !details.internal)
-    .map((details) => details.address);
-
-  res.status(200).json({
-    success: true,
-    message: `API is running on port ${PORT}`,
-    uptime: process.uptime(),
-    timestamp: new Date(),
-    serverIPs: ips
-  });
-});
+app.use('/api/v1', userRouter);
+app.use('/api/v1/', courseRouters);
 
 /*
    404 Handler

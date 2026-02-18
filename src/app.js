@@ -6,6 +6,9 @@ import { CLIENT_URL, NODE_ENV } from './config/env.js';
 import authRouter from './routes/auth.route.js';
 import userRouter from './routes/user.route.js';
 import courseRouters from './routes/course.route.js';
+import enrollRouter from './routes/enrollment.route.js';
+import progressRouter from './routes/progress.route.js';
+import assessmentRouter from './routes/assessment.route.js';
 
 const app = express();
 
@@ -41,6 +44,9 @@ app.use('/api/v1/auth', authRouter);
 
 app.use('/api/v1', userRouter);
 app.use('/api/v1/', courseRouters);
+app.use('/api/v1/', enrollRouter);
+app.use('/api/v1/', progressRouter);
+app.use('/api/v1/', assessmentRouter);
 
 /*
    404 Handler

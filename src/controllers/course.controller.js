@@ -61,6 +61,11 @@ export const getCourses = async (req, res, next) => {
       whereClause.isPublished = published === 'true';
     }
 
+    console.log(
+      `Fetching courses for user ${userId} with roles ${roles.join(', ')} and filters:`,
+      whereClause
+    );
+
     const [courses, total] = await Promise.all([
       prisma.course.findMany({
         where: whereClause,

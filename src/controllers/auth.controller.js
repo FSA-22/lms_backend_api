@@ -3,10 +3,100 @@ import { prisma } from '../lib/prisma.js';
 import { generateSlug } from '../utils/slugify.js';
 import { generateToken } from '../utils/generateToken.js';
 
+// export const registerTenant = async (req, res) => {
+//   const { companyName, firstName, lastName, email, password } = req.body;
+
+//   console.log(req.body);
+
+//   console.log('🔥 Tenant register hit');
+
+//   try {
+//     const result = await prisma.$transaction(async (tx) => {
+//       // 1. Generate slug
+//       let baseSlug = generateSlug(companyName);
+//       let slug = baseSlug;
+//       let counter = 1;
+
+//       console.log('slug:', slug);
+
+//       while (await tx.tenant.findUnique({ where: { slug } })) {
+//         counter++;
+//         slug = `${baseSlug}-${counter}`;
+//       }
+
+//       // 2. Create Tenant
+//       const tenant = await tx.tenant.create({
+//         data: { name: companyName, slug }
+//       });
+
+//       // 3. Hash password
+//       const hashedPassword = await bcrypt.hash(password, 12);
+
+//       // 4. Create Admin User
+//       const user = await tx.user.create({
+//         data: {
+//           tenantId: tenant.id,
+//           firstName,
+//           lastName,
+//           email,
+//           password: hashedPassword
+//         }
+//       });
+
+//       // 5. Assign ADMIN role
+//       const adminRole = await tx.role.findUnique({
+//         where: { name: 'ADMIN' }
+//       });
+
+//       await tx.userRole.create({
+//         data: {
+//           userId: user.id,
+//           roleId: adminRole.id
+//         }
+//       });
+
+//       // 6. Attach FREE subscription
+//       const freePlan = await tx.plan.findUnique({
+//         where: { name: 'FREE' }
+//       });
+
+//       await tx.subscription.create({
+//         data: {
+//           tenantId: tenant.id,
+//           planId: freePlan.id,
+//           status: 'ACTIVE'
+//         }
+//       });
+
+//       return { user, tenant };
+//     });
+
+//     // 7. Issue JWT
+//     const token = generateToken({
+//       userId: user.id,
+//       tenantId: tenant.id,
+//       tenant: slug,
+//       role: role
+//     });
+
+//     res.status(201).json({
+//       message: 'Tenant registered successfully',
+//       slug: result.tenant.slug,
+//       token
+//     });
+
+//     console.log('result:', result);
+//   } catch (error) {
+//     console.error(error.message);
+//     res.status(500).json({ message: 'Registration failed' });
+//   }
+// };
+
 export const registerTenant = async (req, res) => {
   const { companyName, firstName, lastName, email, password } = req.body;
 
   console.log(req.body);
+  console.log('🔥 Tenant register hit');
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -69,12 +159,12 @@ export const registerTenant = async (req, res) => {
       return { user, tenant };
     });
 
-    // 7. Issue JWT
+    // 7. Issue JWT using result
     const token = generateToken({
-      userId: user.id,
-      tenantId: tenant.id,
-      tenant: slug,
-      role: role
+      userId: result.user.id,
+      tenantId: result.tenant.id,
+      tenant: result.tenant.slug,
+      role: 'ADMIN'
     });
 
     res.status(201).json({
@@ -85,7 +175,7 @@ export const registerTenant = async (req, res) => {
 
     console.log('result:', result);
   } catch (error) {
-    console.error(error.message);
+    console.error(error);
     res.status(500).json({ message: 'Registration failed' });
   }
 };

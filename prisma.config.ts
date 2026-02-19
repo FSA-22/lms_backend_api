@@ -7,7 +7,8 @@ import { DIRECT_URL, DATABASE_URL } from './src/config/env.js';
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
-    path: 'prisma/migrations'
+    path: 'prisma/migrations',
+    seed: 'node prisma/migrations/seed.js'
   },
 
   datasource: {

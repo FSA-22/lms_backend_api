@@ -8,36 +8,49 @@ datasource db {
 }
 
 model Tenant {
-  id           String          @id @default(uuid())
-  name         String
-  slug         String          @unique
-  isActive     Boolean         @default(true)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  courses      Course[]
-  subscription Subscription?
-  settings     TenantSettings?
-  users        User[]
+  id                 String              @id @default(uuid())
+  name               String
+  slug               String              @unique
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+
+  courses            Course[]
+  subscription       Subscription?
+  settings           TenantSettings?
+  users              User[]
+  lessons            Lesson[]
+  enrollments        Enrollment[]
+  progresses         Progress[]
+  assessments        Assessment[]
+  assessmentResults  AssessmentResult[]
+
+  @@index([slug])
 }
 
 model User {
-  id          String             @id @default(uuid())
-  tenantId    String
-  firstName   String
-  lastName    String
-  email       String
-  password    String
-  isActive    Boolean            @default(true)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id         String   @id @default(uuid())
+  tenantId   String
+  firstName  String
+  lastName   String
+  email      String
+  password   String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
   results     AssessmentResult[]
   courses     Course[]
   enrollments Enrollment[]
   progress    Progress[]
-  tenant      Tenant             @relation(fields: [tenantId], references: [id])
   roles       UserRole[]
 
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   @@unique([tenantId, email])
+  @@index([tenantId])
 }
 
 model Role {
@@ -51,87 +64,128 @@ model UserRole {
   userId     String
   roleId     String
   assignedAt DateTime @default(now())
-  role       Role     @relation(fields: [roleId], references: [id])
-  user       User     @relation(fields: [userId], references: [id])
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
 }
 
 model Course {
-  id           String       @id @default(uuid())
+  id           String   @id @default(uuid())
   tenantId     String
   title        String
   description  String?
-  isPublished  Boolean      @default(false)
+  isPublished  Boolean  @default(false)
   instructorId String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
   assessments  Assessment[]
-  instructor   User         @relation(fields: [instructorId], references: [id])
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  instructor   User       @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   enrollments  Enrollment[]
   lessons      Lesson[]
+
+  @@index([tenantId])
+  @@index([instructorId])
 }
 
 model Lesson {
-  id        String     @id @default(uuid())
+  id        String   @id @default(uuid())
   courseId  String
+  tenantId  String
   title     String
   content   String?
   order     Int
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  course    Course     @relation(fields: [courseId], references: [id])
-  progress  Progress[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  progress Progress[]
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([courseId, order])
+  @@index([tenantId])
 }
 
 model Enrollment {
   id         String   @id @default(uuid())
+  tenantId   String
   userId     String
   courseId   String
   enrolledAt DateTime @default(now())
-  course     Course   @relation(fields: [courseId], references: [id])
-  user       User     @relation(fields: [userId], references: [id])
+  deletedAt  DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([courseId])
 }
 
 model Progress {
   id          String    @id @default(uuid())
+  tenantId    String
   userId      String
   lessonId    String
   completed   Boolean   @default(false)
   completedAt DateTime?
-  lesson      Lesson    @relation(fields: [lessonId], references: [id])
-  user        User      @relation(fields: [userId], references: [id])
+  deletedAt   DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([lessonId])
 }
 
 model Assessment {
-  id         String             @id @default(uuid())
+  id         String   @id @default(uuid())
+  tenantId   String
   courseId   String
   title      String
   type       AssessmentType
   totalMarks Int
-  createdAt  DateTime           @default(now())
-  course     Course             @relation(fields: [courseId], references: [id])
-  results    AssessmentResult[]
+  createdAt  DateTime @default(now())
+  deletedAt  DateTime?
+
+  results AssessmentResult[]
+  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  course  Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([courseId])
 }
 
 model AssessmentResult {
-  id           String     @id @default(uuid())
+  id           String   @id @default(uuid())
+  tenantId     String
   assessmentId String
   userId       String
   score        Float
   passed       Boolean
-  submittedAt  DateTime   @default(now())
-  assessment   Assessment @relation(fields: [assessmentId], references: [id])
-  user         User       @relation(fields: [userId], references: [id])
+  submittedAt  DateTime @default(now())
+  deletedAt    DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([assessmentId, userId])
+  @@index([tenantId])
+  @@index([assessmentId])
+  @@index([userId])
 }
 
 model Subscription {
@@ -141,8 +195,10 @@ model Subscription {
   status    SubscriptionStatus
   startedAt DateTime           @default(now())
   expiresAt DateTime?
-  plan      Plan               @relation(fields: [planId], references: [id])
-  tenant    Tenant             @relation(fields: [tenantId], references: [id])
+  deletedAt DateTime?
+
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Plan {
@@ -155,12 +211,14 @@ model Plan {
 }
 
 model TenantSettings {
-  id       String  @id @default(uuid())
-  tenantId String  @unique
-  logoUrl  String?
-  theme    String?
-  domain   String?
-  tenant   Tenant  @relation(fields: [tenantId], references: [id])
+  id        String   @id @default(uuid())
+  tenantId  String   @unique
+  logoUrl   String?
+  theme     String?
+  domain    String?
+  deletedAt DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 enum AssessmentType {

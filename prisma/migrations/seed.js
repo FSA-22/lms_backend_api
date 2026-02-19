@@ -1,11 +1,9 @@
 import { prisma } from '../../src/lib/prisma.js';
 
 async function main() {
-  await prisma.role.createMany({
-    data: [{ name: 'ADMIN' }, { name: 'INSTRUCTOR' }, { name: 'STUDENT' }],
-    skipDuplicates: true
-  });
+  console.log('🌱 Seeding database...');
 
+  //  PLANS
   await prisma.plan.createMany({
     data: [
       { name: 'FREE', price: 0, maxUsers: 10, maxCourses: 5 },
@@ -14,9 +12,24 @@ async function main() {
     skipDuplicates: true
   });
 
-  console.log('Seeded successfully');
+  //  ROLES
+  const roles = ['Admin', 'Instructor', 'Student'];
+  for (const name of roles) {
+    await prisma.role.upsert({
+      where: { name },
+      update: {},
+      create: { name }
+    });
+  }
+
+  console.log('✅ Plan & Roles seeded successfully');
 }
 
 main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

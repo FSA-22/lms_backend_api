@@ -1,11 +1,31 @@
 import jwt from "jsonwebtoken";
 
-export const generateToken = (payload) => {
-  return jwt.sign(payload, process.env.JWT_SECRET || "dev_secret", {
-    expiresIn: "1d",
+const getJwtSecret = () => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("Missing JWT_SECRET environment variable");
+  }
+
+  return process.env.JWT_SECRET;
+};
+
+const getRefreshJwtSecret = () => process.env.JWT_REFRESH_SECRET || getJwtSecret();
+
+export const generateAccessToken = (payload) => {
+  return jwt.sign(payload, getJwtSecret(), {
+    expiresIn: process.env.JWT_EXPIRES_IN || "15m",
   });
 };
 
-export const verifyToken = (token) => {
-  return jwt.verify(token, process.env.JWT_SECRET || "dev_secret");
+export const generateRefreshToken = (payload) => {
+  return jwt.sign(payload, getRefreshJwtSecret(), {
+    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
+  });
+};
+
+export const verifyAccessToken = (token) => {
+  return jwt.verify(token, getJwtSecret());
+};
+
+export const verifyRefreshToken = (token) => {
+  return jwt.verify(token, getRefreshJwtSecret());
 };

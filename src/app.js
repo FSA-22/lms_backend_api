@@ -9,8 +9,6 @@ const app = express();
 
 import authRoutes from './routes/auth.routes.js';
 
-app.use('/api/auth', authRoutes);
-
 
 /*
    Core Middlewares
@@ -35,6 +33,8 @@ app.use(express.urlencoded({ extended: true }));
 if (NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
+
+app.use('/api/auth', authRoutes);
 
 /*
    Health Check

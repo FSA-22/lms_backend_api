@@ -6,45 +6,52 @@ import { CLIENT_URL, NODE_ENV } from './config/env.js';
 import authRouter from './routes/auth.route.js';
 import userRouter from './routes/user.route.js';
 import courseRouters from './routes/course.route.js';
+import enrollRouter from './routes/enrollment.route.js';
+import progressRouter from './routes/progress.route.js';
+import assessmentRouter from './routes/assessment.route.js';
+
+// Import ONLY your route for now (to isolate)
+import coursesRoutes from './routes/courses.routes.js';
 
 const app = express();
 
-/*
-   Core Middlewares
-*/
-
-// Security headers
+// Core Middlewares
 app.use(helmet());
-
-// Enable CORS
-app.use(
-  cors({
-    origin: CLIENT_URL || '*',
-    credentials: true
-  })
-);
-
-// Body parsers
+app.use(cors({
+  origin: CLIENT_URL || '*',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Logger (dev only)
 if (NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
+<<<<<<< HEAD
+// ────────────────────────────────────────────────
+// YOUR ROUTE - Mounted by Ugoo (only this one for testing)
+app.use('/api/courses', coursesRoutes);
+
+// Health Check
+app.get('/health', (req, res) => {
+  const networkInterfaces = os.networkInterfaces();
+  console.log(networkInterfaces, 'ips');
+=======
 /*
    auths
 */
 
 app.use('/api/v1/auth', authRouter);
+>>>>>>> 8c7402d83d34171297cdc43f20aeae4bc4270ce1
 
 app.use('/api/v1', userRouter);
 app.use('/api/v1/', courseRouters);
+app.use('/api/v1/', enrollRouter);
+app.use('/api/v1/', progressRouter);
+app.use('/api/v1/', assessmentRouter);
 
-/*
-   404 Handler
-*/
+// 404 Handler (must be last)
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -52,12 +59,9 @@ app.use((req, res) => {
   });
 });
 
-/*
-   Global Error Handler
-*/
+// Global Error Handler
 app.use((err, req, res, next) => {
   console.error(err);
-
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error'

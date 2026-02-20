@@ -1,9 +1,14 @@
-import os from 'os';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { CLIENT_URL, NODE_ENV, PORT } from './config/env.js';
+import { CLIENT_URL, NODE_ENV } from './config/env.js';
+import authRouter from './routes/auth.route.js';
+import userRouter from './routes/user.route.js';
+import courseRouters from './routes/course.route.js';
+import enrollRouter from './routes/enrollment.route.js';
+import progressRouter from './routes/progress.route.js';
+import assessmentRouter from './routes/assessment.route.js';
 
 // Import ONLY your route for now (to isolate)
 import coursesRoutes from './routes/courses.routes.js';
@@ -23,6 +28,7 @@ if (NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
+<<<<<<< HEAD
 // ────────────────────────────────────────────────
 // YOUR ROUTE - Mounted by Ugoo (only this one for testing)
 app.use('/api/courses', coursesRoutes);
@@ -31,20 +37,19 @@ app.use('/api/courses', coursesRoutes);
 app.get('/health', (req, res) => {
   const networkInterfaces = os.networkInterfaces();
   console.log(networkInterfaces, 'ips');
+=======
+/*
+   auths
+*/
 
-  const ips = Object.values(networkInterfaces)
-    .flat()
-    .filter((details) => details.family === 'IPv4' && !details.internal)
-    .map((details) => details.address);
+app.use('/api/v1/auth', authRouter);
+>>>>>>> 8c7402d83d34171297cdc43f20aeae4bc4270ce1
 
-  res.status(200).json({
-    success: true,
-    message: `API is running on port ${PORT}`,
-    uptime: process.uptime(),
-    timestamp: new Date(),
-    serverIPs: ips
-  });
-});
+app.use('/api/v1', userRouter);
+app.use('/api/v1/', courseRouters);
+app.use('/api/v1/', enrollRouter);
+app.use('/api/v1/', progressRouter);
+app.use('/api/v1/', assessmentRouter);
 
 // 404 Handler (must be last)
 app.use((req, res) => {

@@ -1,40 +1,111 @@
 import { prisma } from '../lib/prisma.js';
 
 export const markLessonCompleted = async (req, res, next) => {
-  const { lessonId } = req.body;
-  const userId = req.user.id;
-  const tenantId = req.user.tenantId;
+  const { lessonId } = req.params;
+  const { id: userId, tenantId } = req.user;
 
   try {
     const progress = await prisma.$transaction(async (tx) => {
-      //  Ensure lesson belongs to student's tenant via course
+      // Get lesson and validate tenant
       const lesson = await tx.lesson.findFirst({
         where: {
           id: lessonId,
-          course: { tenantId }
+          tenantId,
+          deletedAt: null
+        }
+      });
+
+      if (!lesson) {
+        throw new Error('LESSON_NOT_FOUND');
+      }
+
+      // Ensure student is enrolled in the course
+      const enrollment = await tx.enrollment.findFirst({
+        where: {
+          userId,
+          courseId: lesson.courseId,
+          tenantId
+        }
+      });
+
+      if (!enrollment) {
+        throw new Error('NOT_ENROLLED');
+      }
+
+      // Use upsert instead of manual duplicate check
+      return tx.progress.upsert({
+        where: {
+          userId_lessonId: {
+            userId,
+            lessonId
+          }
         },
-        include: { course: true }
+        update: {
+          completed: true,
+          completedAt: new Date()
+        },
+        create: {
+          tenantId,
+          userId,
+          lessonId,
+          completed: true,
+          completedAt: new Date()
+        }
       });
 
-      if (!lesson) throw new Error('Lesson not found or access denied');
+      //       const totalLessons = await tx.lesson.count({
+      //   where: {
+      //     courseId: lesson.courseId,
+      //     tenantId,
+      //     deletedAt: null
+      //   }
+      // });
 
-      // Prevent duplicate progress
-      const existing = await tx.progress.findUnique({
-        where: { userId_lessonId: { userId, lessonId } }
-      });
+      // const completedLessons = await tx.progress.count({
+      //   where: {
+      //     courseId: lesson.courseId,
+      //     tenantId,
+      //     userId,
+      //     completed: true
+      //   }
+      // });
 
-      if (existing) throw new Error('Lesson already marked completed');
-
-      // Mark lesson completed
-      const newProgress = await tx.progress.create({
-        data: { userId, lessonId, completed: true, completedAt: new Date() }
-      });
-
-      return newProgress;
+      // if (totalLessons > 0 && totalLessons === completedLessons) {
+      //   await tx.courseProgress.upsert({
+      //     where: {
+      //       userId_courseId: {
+      //         userId,
+      //         courseId: lesson.courseId
+      //       }
+      //     },
+      //     update: {
+      //       completed: true,
+      //       completedAt: new Date()
+      //     },
+      //     create: {
+      //       tenantId,
+      //       userId,
+      //       courseId: lesson.courseId,
+      //       completed: true,
+      //       completedAt: new Date()
+      //     }
+      //   });
+      // }
     });
 
-    res.status(201).json({ message: 'Lesson completed', progress });
+    return res.status(200).json({
+      message: 'Lesson marked as completed',
+      progress
+    });
   } catch (error) {
+    if (error.message === 'LESSON_NOT_FOUND') {
+      return res.status(404).json({ message: 'Lesson not found' });
+    }
+
+    if (error.message === 'NOT_ENROLLED') {
+      return res.status(403).json({ message: 'You are not enrolled in this course' });
+    }
+
     next(error);
   }
 };

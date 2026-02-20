@@ -1,32 +1,63 @@
-import { prisma } from '../lib/prisma';
+import { prisma } from '../lib/prisma.js';
 
 export const createLesson = async (req, res, next) => {
-  const { courseId, title, content } = req.body;
-  const { tenantId } = req.user;
+  const { title, content } = req.body;
+  const { courseId } = req.params;
+  const { tenantId, id: userId } = req.user;
 
-  try {
-    const course = await prisma.course.findFirst({
-      where: {
-        id: courseId,
-        tenantId
+  const MAX_RETRIES = 2;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const lesson = await prisma.$transaction(async (tx) => {
+        const course = await tx.course.findFirst({
+          where: {
+            id: courseId,
+            tenantId,
+            instructorId: userId,
+            deletedAt: null
+          }
+        });
+
+        if (!course) {
+          throw new Error('COURSE_NOT_FOUND');
+        }
+
+        const lastLesson = await tx.lesson.findFirst({
+          where: { courseId, tenantId },
+          orderBy: { order: 'desc' }
+        });
+
+        const nextOrder = lastLesson ? lastLesson.order + 1 : 1;
+
+        return tx.lesson.create({
+          data: {
+            courseId,
+            tenantId,
+            title,
+            content,
+            order: nextOrder
+          }
+        });
+      });
+
+      return res.status(201).json({
+        message: 'Lesson created',
+        lesson
+      });
+    } catch (error) {
+      // Course validation error
+      if (error.message === 'COURSE_NOT_FOUND') {
+        return res.status(404).json({ message: 'Course not found or unauthorized' });
       }
-    });
 
-    if (!course) {
-      return res.status(404).json({ message: 'Course not found' });
+      // Unique constraint conflict (P2002)
+      if (error.code === 'P2002' && attempt < MAX_RETRIES) {
+        continue; // retry
+      }
+
+      return next(error);
     }
-
-    const lesson = await prisma.lesson.create({
-      data: {
-        courseId,
-        title,
-        content
-      }
-    });
-
-    res.status(201).json(lesson);
-  } catch (error) {
-    next(error);
   }
 };
 
@@ -115,14 +146,27 @@ export const updateLesson = async (req, res, next) => {
     const { title, content, order, isPublished } = req.body;
     const { id: userId, tenantId } = req.user;
 
+    // const lesson = await prisma.lesson.findFirst({
+    //   where: {
+    //     id: lessonId,
+    //     tenantId,
+    //     deletedAt: null,
+    //     course: { instructorId: userId }
+    //   }
+    // });
+
     const lesson = await prisma.lesson.findFirst({
       where: {
         id: lessonId,
         tenantId,
-        deletedAt: null,
-        course: { instructorId: userId }
-      }
+        deletedAt: null
+      },
+      include: { course: true }
     });
+
+    if (!lesson || lesson.course.instructorId !== userId) {
+      return res.status(404).json({ message: 'Lesson not found or not owned' });
+    }
 
     if (!lesson) {
       return res.status(404).json({ message: 'Lesson not found or not owned' });

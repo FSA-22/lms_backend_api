@@ -10,6 +10,8 @@ import enrollRouter from './routes/enrollment.route.js';
 import progressRouter from './routes/progress.route.js';
 import assessmentRouter from './routes/assessment.route.js';
 import assessmentResultRoute from './routes/assessmentResult.route.js';
+import lessonsRouter from './routes/lesson.route.js';
+import studentDashboardRouter from './routes/studentDashboard.route.js';
 
 const app = express();
 
@@ -49,6 +51,8 @@ app.use('/api/v1/', enrollRouter);
 app.use('/api/v1/', progressRouter);
 app.use('/api/v1/', assessmentRouter);
 app.use('/api/v1/', assessmentResultRoute);
+app.use('/api/v1/', lessonsRouter);
+app.use('/api/v1/', studentDashboardRouter);
 
 /*
    404 Handler

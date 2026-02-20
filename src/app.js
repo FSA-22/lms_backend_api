@@ -9,6 +9,7 @@ import courseRouters from './routes/course.route.js';
 import enrollRouter from './routes/enrollment.route.js';
 import progressRouter from './routes/progress.route.js';
 import assessmentRouter from './routes/assessment.route.js';
+import assessmentResultRoute from './routes/assessmentResult.route.js';
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use('/api/v1/', courseRouters);
 app.use('/api/v1/', enrollRouter);
 app.use('/api/v1/', progressRouter);
 app.use('/api/v1/', assessmentRouter);
+app.use('/api/v1/', assessmentResultRoute);
 
 /*
    404 Handler

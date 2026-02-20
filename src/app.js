@@ -5,36 +5,29 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { CLIENT_URL, NODE_ENV, PORT } from './config/env.js';
 
+// Import ONLY your route for now (to isolate)
+import coursesRoutes from './routes/courses.routes.js';
+
 const app = express();
 
-/*
-   Core Middlewares
-*/
-
-// Security headers
+// Core Middlewares
 app.use(helmet());
-
-// Enable CORS
-app.use(
-  cors({
-    origin: CLIENT_URL || '*',
-    credentials: true
-  })
-);
-
-// Body parsers
+app.use(cors({
+  origin: CLIENT_URL || '*',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Logger (dev only)
 if (NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
-/*
-   Health Check
-*/
+// ────────────────────────────────────────────────
+// YOUR ROUTE - Mounted by Ugoo (only this one for testing)
+app.use('/api/courses', coursesRoutes);
 
+// Health Check
 app.get('/health', (req, res) => {
   const networkInterfaces = os.networkInterfaces();
   console.log(networkInterfaces, 'ips');
@@ -53,9 +46,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-/*
-   404 Handler
-*/
+// 404 Handler (must be last)
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -63,12 +54,9 @@ app.use((req, res) => {
   });
 });
 
-/*
-   Global Error Handler
-*/
+// Global Error Handler
 app.use((err, req, res, next) => {
   console.error(err);
-
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error'

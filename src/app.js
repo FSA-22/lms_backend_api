@@ -9,6 +9,9 @@ import courseRouters from './routes/course.route.js';
 import enrollRouter from './routes/enrollment.route.js';
 import progressRouter from './routes/progress.route.js';
 import assessmentRouter from './routes/assessment.route.js';
+import assessmentResultRoute from './routes/assessmentResult.route.js';
+import lessonsRouter from './routes/lesson.route.js';
+import studentDashboardRouter from './routes/studentDashboard.route.js';
 
 // Import ONLY your route for now (to isolate)
 import coursesRoutes from './routes/courses.routes.js';
@@ -50,6 +53,9 @@ app.use('/api/v1/', courseRouters);
 app.use('/api/v1/', enrollRouter);
 app.use('/api/v1/', progressRouter);
 app.use('/api/v1/', assessmentRouter);
+app.use('/api/v1/', assessmentResultRoute);
+app.use('/api/v1/', lessonsRouter);
+app.use('/api/v1/', studentDashboardRouter);
 
 // 404 Handler (must be last)
 app.use((req, res) => {

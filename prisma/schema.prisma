@@ -85,6 +85,8 @@ model Course {
   deletedAt    DateTime?
 
   assessments  Assessment[]
+  progress Progress[]
+
   instructor   User       @relation(fields: [instructorId], references: [id], onDelete: Cascade)
   tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   enrollments  Enrollment[]
@@ -137,17 +139,20 @@ model Progress {
   userId      String
   lessonId    String
   completed   Boolean   @default(false)
-  completedAt DateTime?
-  deletedAt   DateTime?
+  completedAt DateTime?    // nullable so old records are fine
+  deletedAt   DateTime?    // soft delete support
+  courseId    String?       // optional, derived from lesson, safe for future use
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonId])
   @@index([tenantId])
   @@index([userId])
   @@index([lessonId])
+  @@index([courseId])
 }
 
 model Assessment {
@@ -220,6 +225,24 @@ model TenantSettings {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
+
+
+// model Certificate {
+//   id          String   @id @default(uuid())
+//   tenantId    String
+//   userId      String
+//   courseId    String
+//   issuedAt    DateTime @default(now())
+//   certificateNo String @unique
+
+//   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+//   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+//   @@unique([userId, courseId])
+//   @@index([tenantId])
+// }
+
 
 enum AssessmentType {
   QUIZ

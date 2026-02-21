@@ -91,49 +91,34 @@ lms-backend/
 │   │   ├── enrollment.controller.ts
 │   │   └── assessment.controller.ts
 │   │
-│   ├── services/
-│   │   ├── auth.service.ts
-│   │   ├── user.service.ts
-│   │   ├── course.service.ts
-│   │   ├── enrollment.service.ts
-│   │   └── assessment.service.ts
-│   │
-│   ├── models/
-│   │   ├── user.model.ts
-│   │   ├── course.model.ts
-│   │   ├── lesson.model.ts
-│   │   ├── enrollment.model.ts
-│   │   ├── assessment.model.ts
-│   │   └── submission.model.ts
-│   │
 │   ├── routes/
-│   │   ├── auth.routes.ts
-│   │   ├── user.routes.ts
-│   │   ├── course.routes.ts
-│   │   ├── lesson.routes.ts
-│   │   ├── enrollment.routes.ts
-│   │   └── assessment.routes.ts
+│   │   ├── auth.routes.js
+│   │   ├── user.routes.js
+│   │   ├── course.routes.js
+│   │   ├── lesson.routes.js
+│   │   ├── enrollment.routes.js
+│   │   └── assessment.routes.js
 │   │
 │   ├── middleware/
-│   │   ├── auth.middleware.ts
-│   │   ├── role.middleware.ts
-│   │   ├── rateLimit.middleware.ts
-│   │   ├── validation.middleware.ts
-│   │   └── error.middleware.ts
+│   │   ├── auth.middleware.js
+│   │   ├── role.middleware.js
+│   │   ├── rateLimit.middleware.js
+│   │   ├── validation.middleware.js
+│   │   └── error.middleware.js
 │   │
 │   ├── validators/
-│   │   ├── auth.validator.ts
-│   │   ├── course.validator.ts
-│   │   └── lesson.validator.ts
+│   │   ├── auth.validator.js
+│   │   ├── course.validator.js
+│   │   └── lesson.validator.js
 │   │
 │   ├── utils/
-│   │   ├── jwt.ts
-│   │   ├── password.ts
-│   │   ├── pagination.ts
+│   │   ├── jwt.js
+│   │   ├── password.js
+│   │   ├── pagination.js
 │   │   └── logger.ts
 │   │
-│   ├── app.ts                     # Express app
-│   └── server.ts                  # App entry point
+│   ├── app.js                     # Express app
+│   └── server.js                  # App entry point
 │
 ├── tests/
 │   ├── unit/
@@ -151,7 +136,7 @@ lms-backend/
 PORT=5000
 NODE_ENV=development
 
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRES_IN=1d
+JWT_SECRET=''
+JWT_EXPIRES_IN=7d
 
 REDIS_URL=redis://localhost:6379

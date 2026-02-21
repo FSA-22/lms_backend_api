@@ -8,38 +8,39 @@ datasource db {
 }
 
 model Tenant {
-  id                 String              @id @default(uuid())
-  name               String
-  slug               String              @unique
-  isActive           Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  deletedAt          DateTime?
+  id        String    @id @default(uuid())
+  name      String
+  slug      String    @unique
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  courses            Course[]
-  subscription       Subscription?
-  settings           TenantSettings?
-  users              User[]
-  lessons            Lesson[]
-  enrollments        Enrollment[]
-  progresses         Progress[]
-  assessments        Assessment[]
-  assessmentResults  AssessmentResult[]
+  courses           Course[]
+  subscription      Subscription?
+  settings          TenantSettings?
+  users             User[]
+  lessons           Lesson[]
+  enrollments       Enrollment[]
+  progresses        Progress[]
+  assessments       Assessment[]
+  assessmentResults AssessmentResult[]
+  certificates      Certificate[]
 
   @@index([slug])
 }
 
 model User {
-  id         String   @id @default(uuid())
-  tenantId   String
-  firstName  String
-  lastName   String
-  email      String
-  password   String
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  deletedAt  DateTime?
+  id        String    @id @default(uuid())
+  tenantId  String
+  firstName String
+  lastName  String
+  email     String
+  password  String
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   results     AssessmentResult[]
   courses     Course[]
@@ -47,7 +48,8 @@ model User {
   progress    Progress[]
   roles       UserRole[]
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  certificates Certificate[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -74,51 +76,54 @@ model UserRole {
 }
 
 model Course {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   tenantId     String
   title        String
   description  String?
-  isPublished  Boolean  @default(false)
+  isPublished  Boolean   @default(false)
   instructorId String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
-  assessments  Assessment[]
-  instructor   User       @relation(fields: [instructorId], references: [id], onDelete: Cascade)
-  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assessments Assessment[]
+  progress    Progress[]
+
+  instructor   User          @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   enrollments  Enrollment[]
   lessons      Lesson[]
+  certificates Certificate[]
 
   @@index([tenantId])
   @@index([instructorId])
 }
 
 model Lesson {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   courseId  String
   tenantId  String
   title     String
   content   String?
   order     Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   progress Progress[]
-  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  course   Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([courseId, order])
   @@index([tenantId])
 }
 
 model Enrollment {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   tenantId   String
   userId     String
   courseId   String
-  enrolledAt DateTime @default(now())
+  enrolledAt DateTime  @default(now())
   deletedAt  DateTime?
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -137,45 +142,48 @@ model Progress {
   userId      String
   lessonId    String
   completed   Boolean   @default(false)
-  completedAt DateTime?
-  deletedAt   DateTime?
+  completedAt DateTime? // nullable so old records are fine
+  deletedAt   DateTime? // soft delete support
+  courseId    String? // optional, derived from lesson, safe for future use
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonId])
   @@index([tenantId])
   @@index([userId])
   @@index([lessonId])
+  @@index([courseId])
 }
 
 model Assessment {
-  id         String   @id @default(uuid())
+  id         String         @id @default(uuid())
   tenantId   String
   courseId   String
   title      String
   type       AssessmentType
   totalMarks Int
-  createdAt  DateTime @default(now())
+  createdAt  DateTime       @default(now())
   deletedAt  DateTime?
 
   results AssessmentResult[]
-  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  course  Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  course  Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([courseId])
 }
 
 model AssessmentResult {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   tenantId     String
   assessmentId String
   userId       String
   score        Float
   passed       Boolean
-  submittedAt  DateTime @default(now())
+  submittedAt  DateTime  @default(now())
   deletedAt    DateTime?
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -211,8 +219,8 @@ model Plan {
 }
 
 model TenantSettings {
-  id        String   @id @default(uuid())
-  tenantId  String   @unique
+  id        String    @id @default(uuid())
+  tenantId  String    @unique
   logoUrl   String?
   theme     String?
   domain    String?
@@ -221,6 +229,39 @@ model TenantSettings {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
+model Certificate {
+  id              String   @id @default(uuid())
+
+  tenantId        String
+  userId          String
+  courseId        String
+
+  certificateNo   String   @unique
+  verificationHash String? @unique
+
+  issuedAt        DateTime @default(now())
+  issuedBy        String
+
+  status          CertificateStatus @default(ACTIVE)
+
+  revokedAt       DateTime?
+  revokedBy       String?
+  revokeReason    String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([tenantId])
+  @@index([certificateNo])
+  @@index([verificationHash])
+  @@index([status])
+}
 enum AssessmentType {
   QUIZ
   EXAM
@@ -231,4 +272,9 @@ enum SubscriptionStatus {
   ACTIVE
   CANCELLED
   EXPIRED
+}
+
+enum CertificateStatus {
+  ACTIVE
+  REVOKED
 }

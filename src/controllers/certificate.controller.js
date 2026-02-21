@@ -1,5 +1,3 @@
-import * as certificateService from '../services/certificate.service.js';
-
 import { prisma } from '../lib/prisma.js';
 
 /**
@@ -8,11 +6,8 @@ import { prisma } from '../lib/prisma.js';
  *  - Student completed course
  *  - Student passed required assessment
  */
-import { prisma } from '../lib/prisma.js';
 
-/**
- * POST /courses/:courseId/certificates/:userId
- */
+
 export const issueCertificateController = async (req, res) => {
   const { id: actorId, tenantId, role } = req.user;
   const { courseId, userId } = req.params;
@@ -209,8 +204,6 @@ export const getSingleCertificateController = async (req, res) => {
     });
   }
 };
-
-import { prisma } from '../lib/prisma.js';
 
 /**
  * Requirements:

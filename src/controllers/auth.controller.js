@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma.js';
 import { generateSlug } from '../utils/slugify.js';
-import { generateToken } from '../utils/generateToken.js';
+import { generateToken } from '../Utils/generateToken.js';
 
 // export const registerTenant = async (req, res) => {
 //   const { companyName, firstName, lastName, email, password } = req.body;

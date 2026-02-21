@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
-import { JWT_SECRET, EXPIRES_IN } from '../config/env.js';
+import { ACCESS_TOKEN_SECRET, ACCESS_TOKEN_EXPIRES_IN } from '../config/env.js';
 
-if (!JWT_SECRET) {
+if (!ACCESS_TOKEN_SECRET) {
   throw new Error('JWT_SECRET is not defined');
 }
 
@@ -17,9 +17,9 @@ export const generateToken = (payload) => {
       tenant: payload.tenant,
       role: payload.role
     },
-    JWT_SECRET,
+    ACCESS_TOKEN_SECRET,
     {
-      expiresIn: EXPIRES_IN,
+      expiresIn: ACCESS_TOKEN_EXPIRES_IN,
       issuer: 'lms-api',
       audience: 'lms-client'
     }

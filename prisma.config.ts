@@ -12,6 +12,6 @@ export default defineConfig({
   },
 
   datasource: {
-    url: DATABASE_URL!
+    url: DIRECT_URL!
   }
 });

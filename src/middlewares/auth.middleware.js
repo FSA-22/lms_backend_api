@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
-import { JWT_SECRET } from '../config/env.js';
+import { ACCESS_TOKEN_SECRET } from '../config/env.js';
 
 export const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -13,7 +13,7 @@ export const authenticate = async (req, res, next) => {
 
   try {
     // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
 
     //  Check tenant slug from JWT vs URL
     const tenantFromUrl = req.params.slug;

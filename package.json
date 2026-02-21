@@ -1,7 +1,7 @@
 {
   "name": "lms_backend_api",
   "version": "1.0.0",
-  "description": "A **scalable, secure, and production-ready backend API** for a Learning Management System (LMS), built following **industry best practices**.  \r This project is designed as a **sellable capstone** and a strong **portfolio-grade backend system**.",
+  "description": "",
   "type": "module",
   "main": "src/app.js",
   "scripts": {
@@ -18,10 +18,8 @@
   "license": "ISC",
   "dependencies": {
     "@prisma/adapter-pg": "^7.3.0",
-    "@prisma/client": "^7.4.0",
-    "bcrypt": "^6.0.0",
+    "@prisma/client": "^7.4.1",
     "bcryptjs": "^3.0.3",
-    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
@@ -29,22 +27,13 @@
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
     "pg": "^8.18.0",
-    "prisma": "^6.19.2"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint-config-prettier": "^10.1.8",
+    "@eslint/js": "^9.39.2",
+    "eslint-config-prettier": "^6.15.0",
     "globals": "^17.3.0",
-    "prettier": "^3.8.1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/FSA-22/lms_backend_api.git"
-  },
-  "bugs": {
-    "url": "https://github.com/FSA-22/lms_backend_api/issues"
-  },
-  "homepage": "https://github.com/FSA-22/lms_backend_api#readme",
-  "prettier": "^3.8.1",
-  "prisma": "^7.4.0"
+    "prettier": "^3.8.1",
+    "prisma": "^7.4.1"
+  }
 }

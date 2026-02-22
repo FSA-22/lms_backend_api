@@ -7,44 +7,44 @@ import { prisma } from '../lib/prisma.js';
  *  - Student passed required assessment
  */
 
-
 export const issueCertificateController = async (req, res) => {
-  const { id: actorId, tenantId, role } = req.user;
+  const { id: actorId, tenantId, roles } = req.user;
+  const role = roles?.[0];
+
   const { courseId, userId } = req.params;
 
-  if (!courseId || !userId) {
-    return res.status(400).json({
-      success: false,
-      message: 'courseId and userId are required'
-    });
-  }
+  console.log(
+    `Issuing certificate for user ${userId} in course ${courseId} by actor ${actorId} with role ${role}`
+  );
 
-  if (!['INSTRUCTOR', 'ADMIN'].includes(role)) {
-    return res.status(403).json({
-      success: false,
-      message: 'Forbidden: insufficient permissions'
-    });
-  }
+  console.log('Validating course:', { courseId, tenantId });
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // 1️⃣ Validate course (tenant-safe)
+      //  Validate course (tenant-safe)
       const course = await tx.course.findFirst({
-        where: { id: courseId, tenantId }
+        where: {
+          id: courseId,
+          tenantId
+        }
       });
 
       if (!course) {
         throw new Error('COURSE_NOT_FOUND');
       }
 
-      // Instructor ownership
+      // Instructor ownership enforcement
       if (role === 'INSTRUCTOR' && course.instructorId !== actorId) {
         throw new Error('NOT_COURSE_OWNER');
       }
 
       // 2️⃣ Validate enrollment
       const enrollment = await tx.enrollment.findFirst({
-        where: { userId, courseId, tenantId }
+        where: {
+          userId,
+          courseId,
+          tenantId
+        }
       });
 
       if (!enrollment) {
@@ -62,7 +62,9 @@ export const issueCertificateController = async (req, res) => {
             userId,
             courseId,
             tenantId,
-            score: { gte: course.passingScore ?? 0 }
+            score: {
+              gte: course.passingScore ?? 0
+            }
           }
         });
 
@@ -71,7 +73,7 @@ export const issueCertificateController = async (req, res) => {
         }
       }
 
-      // 4️⃣ Duplicate protection (relies on DB unique constraint)
+      // 4️⃣ Issue certificate (unique constraint handles duplicates)
       const certificate = await tx.certificate.create({
         data: {
           tenantId,
@@ -91,7 +93,6 @@ export const issueCertificateController = async (req, res) => {
       data: result
     });
   } catch (error) {
-    // Unique constraint fallback safety
     if (error.code === 'P2002') {
       return res.status(409).json({
         success: false,
@@ -115,7 +116,6 @@ export const issueCertificateController = async (req, res) => {
     });
   }
 };
-
 export const getUserCertificatesController = async (req, res) => {
   const { tenantId } = req.user;
   const { userId } = req.params;

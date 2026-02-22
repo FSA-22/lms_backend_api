@@ -11,10 +11,17 @@ export const authenticate = async (req, res, next) => {
 
   const token = authHeader.split(' ')[1];
 
-  try {
-    // Verify token
-    const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
-
+  // Verify token
+  const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
+  if(decoded.role === 'SUPERUSER'){
+    req.user = {
+      ...decoded,
+      roles: [decoded.role]
+    }
+    next();
+  }
+  else {
+    try {
     //  Check tenant slug from JWT vs URL
     const tenantFromUrl = req.params.slug;
 
@@ -54,4 +61,7 @@ export const authenticate = async (req, res, next) => {
     console.log(error.message);
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
+    }
+
+
 };

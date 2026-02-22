@@ -19,7 +19,7 @@ certificateRouter.post(
   '/:slug/courses/:courseId/certificates/:userId',
   authenticate,
 
-  authorize('INSTRUCTOR', 'ADMIN'),
+  authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
   issueCertificateController
 );
 
@@ -30,7 +30,7 @@ certificateRouter.get(
   '/:slug/users/:userId/certificates',
   authenticate,
 
-  authorize('INSTRUCTOR', 'ADMIN'),
+  authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
   getUserCertificatesController
 );
 
@@ -41,7 +41,7 @@ certificateRouter.get(
   '/:slug/courses/:courseId/certificates',
   authenticate,
 
-  authorize('INSTRUCTOR', 'ADMIN'),
+  authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
   getCourseCertificatesController
 );
 
@@ -52,7 +52,7 @@ certificateRouter.get(
   '/:slug/certificates/:certificateId',
   authenticate,
 
-  authorize('INSTRUCTOR', 'ADMIN', 'STUDENT'),
+  authorize('INSTRUCTOR', 'ADMIN', 'STUDENT', 'SUPERUSER'),
 
   getSingleCertificateController
 );
@@ -64,7 +64,7 @@ certificateRouter.get(
 certificateRouter.patch(
   '/:slug/certificates/:certificateId/revoke',
   authenticate,
-  authorize('INSTRUCTOR', 'ADMIN', 'STUDENT'),
+  authorize('INSTRUCTOR', 'ADMIN', 'STUDENT', 'SUPERUSER'),
 
   getCourseCertificatesController
 );

@@ -8,7 +8,7 @@ const progressRouter = express.Router();
 progressRouter.post(
   '/lessons/:lessonId/progress',
   authenticate,
-  authorize('STUDENT'),
+  authorize('STUDENT', 'SUPERUSER'),
   markLessonCompleted
 );
 

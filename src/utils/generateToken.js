@@ -6,6 +6,19 @@ if (!ACCESS_TOKEN_SECRET) {
 }
 
 export const generateToken = (payload) => {
+    if (payload?.role === 'SUPERUSER') {
+    return jwt.sign({
+      sub: payload.email,
+      role: payload.role
+    }, 
+    ACCESS_TOKEN_SECRET,
+     {
+      expiresIn: ACCESS_TOKEN_EXPIRES_IN,
+      issuer: 'lms-api',
+      audience: 'lms-client'
+    });
+  }
+
   if (!payload?.userId || !payload?.tenantId || !payload?.tenant) {
     throw new Error('Invalid token payload');
   }

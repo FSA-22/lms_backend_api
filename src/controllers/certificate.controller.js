@@ -1,14 +1,10 @@
-import * as certificateService from '../services/certificate.service.js';
-
-import { prisma } from '../lib/prisma.js';
-
 /**
  * Instructor issues certificate
  * Conditions:
  *  - Student completed course
  *  - Student passed required assessment
  */
-import { prisma } from '../lib/prisma.js';
+
 
 /**
  * POST /courses/:courseId/certificates/:userId

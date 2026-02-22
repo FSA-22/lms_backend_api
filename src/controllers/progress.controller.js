@@ -4,6 +4,8 @@ export const markLessonCompleted = async (req, res, next) => {
   const { lessonId } = req.params;
   const { id: userId, tenantId } = req.user;
 
+  console.log(id, lessonId, tenantId);
+
   try {
     const progress = await prisma.$transaction(async (tx) => {
       // Get lesson and validate tenant

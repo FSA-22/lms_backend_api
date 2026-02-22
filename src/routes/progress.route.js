@@ -6,9 +6,9 @@ import { authorize } from '../middlewares/authorize.middleware.js';
 const progressRouter = express.Router();
 
 progressRouter.post(
-  '/lessons/:lessonId/progress',
+  '/:slug/lessons/:lessonId/progress',
   authenticate,
-  authorize('STUDENT'),
+  authorize('STUDENT', 'INSTRUCTOR', 'ADMIN'),
   markLessonCompleted
 );
 

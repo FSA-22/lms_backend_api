@@ -1,15 +1,49 @@
 import express from 'express';
-import { submitAssessment } from '../controllers/assessment.controller.js';
+import {
+  createAssessment,
+  getAssessments,
+  getAssessmentById,
+  updateAssessment,
+  deleteAssessment
+} from '../controllers/assessment.controller.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { authorize } from '../middlewares/authorize.middleware.js';
 
 const assessmentRouter = express.Router();
 
 assessmentRouter.post(
-  '/:slug/assessment/:assessment/submit',
+  '/:slug/courses/:courseId/assessments',
   authenticate,
-  authorize('STUDENT'),
-  submitAssessment
+  authorize('INSTRUCTOR'),
+  createAssessment
+);
+
+assessmentRouter.get(
+  '/:slug/courses/:courseId/assessments',
+  authenticate,
+  authorize('INSTRUCTOR'),
+  getAssessments
+);
+
+assessmentRouter.get(
+  '/:slug/assessments/courses/:courseId/:assessmentId',
+  authenticate,
+  authorize('INSTRUCTOR'),
+  getAssessmentById
+);
+
+assessmentRouter.delete(
+  '/:slug/assessments/courses/:courseId/:assessmentId',
+  authenticate,
+  authorize('INSTRUCTOR'),
+  deleteAssessment
+);
+
+assessmentRouter.put(
+  '/:slug/assessments/courses/:courseId/:assessmentId',
+  authenticate,
+  authorize('INSTRUCTOR'),
+  updateAssessment
 );
 
 export default assessmentRouter;

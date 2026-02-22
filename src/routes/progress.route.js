@@ -5,6 +5,11 @@ import { authorize } from '../middlewares/authorize.middleware.js';
 
 const progressRouter = express.Router();
 
-progressRouter.post('/:slug/progress', authenticate, authorize('STUDENT'), markLessonCompleted);
+progressRouter.post(
+  '/lessons/:lessonId/progress',
+  authenticate,
+  authorize('STUDENT', 'SUPERUSER'),
+  markLessonCompleted
+);
 
 export default progressRouter;

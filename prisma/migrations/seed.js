@@ -13,7 +13,7 @@ async function main() {
   });
 
   //  ROLES
-  const roles = ['Admin', 'Instructor', 'Student'];
+  const roles = ['SUPERUSER','ADMIN', 'INSTRUCTOR', 'STUDENT'];
   for (const name of roles) {
     await prisma.role.upsert({
       where: { name },

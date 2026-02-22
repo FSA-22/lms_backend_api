@@ -18,7 +18,7 @@
   "license": "ISC",
   "dependencies": {
     "@prisma/adapter-pg": "^7.3.0",
-    "@prisma/client": "^7.4.0",
+    "@prisma/client": "^7.4.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
@@ -30,10 +30,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint-config-prettier": "^10.1.8",
+    "@eslint/js": "^9.39.2",
+    "eslint-config-prettier": "^6.15.0",
     "globals": "^17.3.0",
     "prettier": "^3.8.1",
-    "prisma": "^7.4.0"
+    "prisma": "^7.4.1"
   }
 }

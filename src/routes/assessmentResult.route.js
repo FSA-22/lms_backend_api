@@ -9,15 +9,15 @@ import { authorize } from '../middlewares/authorize.middleware.js';
 
 const assessmentResultRoute = Router();
 
-//  Student submits their assessment
+// Student submits assessment → lesson-first enforced
 assessmentResultRoute.post(
   '/:slug/assessments/:assessmentId/submit',
   authenticate,
-  authorize('STUDENT'),
+  authorize('STUDENT', 'INSTRUCTOR', 'SUPERUSER', 'ADMIN'),
   submitAssessmentResult
 );
 
-//  Instructor views all results for a specific assessment
+// Instructor views all results for an assessment
 assessmentResultRoute.get(
   '/:slug/assessments/:assessmentId/results',
   authenticate,
@@ -25,7 +25,7 @@ assessmentResultRoute.get(
   getResultsByAssessment
 );
 
-//  Student views their own results
+// Student views own results
 assessmentResultRoute.get(
   '/:slug/students/:studentId/results',
   authenticate,

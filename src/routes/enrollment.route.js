@@ -7,7 +7,7 @@ const enrollRouter = Router();
 
 // Create a course (INSTRUCTOR only)
 enrollRouter.post(
-  '/:slug/courses/:courseId/enrollments',
+  '/:slug/enrollments/:courseId',
   authenticate,
   authorize('STUDENT'),
   courseEnrollment

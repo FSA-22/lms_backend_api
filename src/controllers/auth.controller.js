@@ -157,7 +157,7 @@ export const registerTenant = async (req, res) => {
 
       // 5. Assign ADMIN role
       const adminRole = await tx.role.findUnique({
-        where: { name: 'Admin' }
+        where: { name: 'ADMIN' }
       });
       if (!adminRole) {
         throw new Error('Admin role not found in database. Please run seed script first.');

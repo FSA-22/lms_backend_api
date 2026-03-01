@@ -2,7 +2,7 @@
 // npm install --save-dev prisma dotenv
 import 'dotenv/config';
 import { defineConfig } from 'prisma/config';
-import { DIRECT_URL } from './src/config/env.js';
+import { DIRECT_URL, DATABASE_URL } from './src/config/env.js';
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
@@ -12,6 +12,6 @@ export default defineConfig({
   },
 
   datasource: {
-    url: DIRECT_URL
+    url: DIRECT_URL!
   }
 });

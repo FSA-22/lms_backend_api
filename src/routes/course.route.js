@@ -7,12 +7,12 @@ import { authorize } from '../middlewares/authorize.middleware.js';
 const courseRouter = Router();
 
 // Create a course (INSTRUCTOR only)
-courseRouter.post('/:slug/courses', authenticate, authorize('INSTRUCTOR'), createCourse);
+courseRouter.post('/:slug/courses', authenticate, authorize('INSTRUCTOR', 'SUPERUSER'), createCourse);
 
 courseRouter.get(
   '/:slug/courses',
   authenticate,
-  authorize('ADMIN', 'INSTRUCTOR', 'STUDENT'),
+  authorize('ADMIN', 'INSTRUCTOR', 'STUDENT', 'SUPERUSER'),
   getCourses
 );
 

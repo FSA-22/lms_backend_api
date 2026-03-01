@@ -21,7 +21,7 @@ assessmentResultRoute.post(
 assessmentResultRoute.get(
   '/:slug/assessments/:assessmentId/results',
   authenticate,
-  authorize('INSTRUCTOR'),
+  authorize('INSTRUCTOR', 'SUPERUSER'),
   getResultsByAssessment
 );
 

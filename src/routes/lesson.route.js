@@ -17,7 +17,7 @@ const lessonsRouter = express.Router();
 lessonsRouter.post(
   '/:slug/courses/:courseId/lessons',
   authenticate,
-  authorize('INSTRUCTOR'),
+  authorize('INSTRUCTOR', 'SUPERUSER'),
   createLesson
 );
 

@@ -1,7 +1,120 @@
 import bcrypt from 'bcryptjs';
+import { SUPER_USER_EMAIL, SUPERUSER_PASSWORD } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { generateSlug } from '../utils/slugify.js';
-import { generateToken } from '../utils/generateToken.js';
+import { generateToken } from '../Utils/generateToken.js';
+
+// export const registerTenant = async (req, res) => {
+//   const { companyName, firstName, lastName, email, password } = req.body;
+
+//   console.log(req.body);
+
+//   console.log('🔥 Tenant register hit');
+
+//   try {
+//     const result = await prisma.$transaction(async (tx) => {
+//       // 1. Generate slug
+//       let baseSlug = generateSlug(companyName);
+//       let slug = baseSlug;
+//       let counter = 1;
+
+//       console.log('slug:', slug);
+
+//       while (await tx.tenant.findUnique({ where: { slug } })) {
+//         counter++;
+//         slug = `${baseSlug}-${counter}`;
+//       }
+
+//       // 2. Create Tenant
+//       const tenant = await tx.tenant.create({
+//         data: { name: companyName, slug }
+//       });
+
+//       // 3. Hash password
+//       const hashedPassword = await bcrypt.hash(password, 12);
+
+//       // 4. Create Admin User
+//       const user = await tx.user.create({
+//         data: {
+//           tenantId: tenant.id,
+//           firstName,
+//           lastName,
+//           email,
+//           password: hashedPassword
+//         }
+//       });
+
+//       // 5. Assign ADMIN role
+//       const adminRole = await tx.role.findUnique({
+//         where: { name: 'ADMIN' }
+//       });
+
+//       await tx.userRole.create({
+//         data: {
+//           userId: user.id,
+//           roleId: adminRole.id
+//         }
+//       });
+
+//       // 6. Attach FREE subscription
+//       const freePlan = await tx.plan.findUnique({
+//         where: { name: 'FREE' }
+//       });
+
+//       await tx.subscription.create({
+//         data: {
+//           tenantId: tenant.id,
+//           planId: freePlan.id,
+//           status: 'ACTIVE'
+//         }
+//       });
+
+//       return { user, tenant };
+//     });
+
+//     // 7. Issue JWT
+//     const token = generateToken({
+//       userId: user.id,
+//       tenantId: tenant.id,
+//       tenant: slug,
+//       role: role
+//     });
+
+//     res.status(201).json({
+//       message: 'Tenant registered successfully',
+//       slug: result.tenant.slug,
+//       token
+//     });
+
+//     console.log('result:', result);
+//   } catch (error) {
+//     console.error(error.message);
+//     res.status(500).json({ message: 'Registration failed' });
+//   }
+// };
+
+export const superUserLogin = async (req, res) => {
+  const { email, password, role } = req.body;
+  try {
+    if (email === SUPER_USER_EMAIL && password === SUPERUSER_PASSWORD) {
+      console.log(`logged-in as SUPERUSER`);
+    }
+  } catch (error) {
+    res.json({
+      success: false,
+      message: 'invalid credentials'
+    });
+  }
+  const token = generateToken({
+    email: email,
+    role: role
+  });
+  res.status(200).json({
+    success: true,
+    token
+  });
+  console.log(req.body);
+};
 
 export const registerTenant = async (req, res) => {
   const { companyName, firstName, lastName, email, password } = req.body;
@@ -10,19 +123,18 @@ export const registerTenant = async (req, res) => {
   console.log('🔥 Tenant register hit');
 
   try {
+    // 1. Generate slug
+    let baseSlug = generateSlug(companyName);
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await prisma.tenant.findUnique({ where: { slug } })) {
+      counter++;
+      slug = `${baseSlug}-${counter}`;
+    }
+    console.log('slug:', slug);
+
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Generate slug
-      let baseSlug = generateSlug(companyName);
-      let slug = baseSlug;
-      let counter = 1;
-
-      console.log('slug:', slug);
-
-      while (await tx.tenant.findUnique({ where: { slug } })) {
-        counter++;
-        slug = `${baseSlug}-${counter}`;
-      }
-
       // 2. Create Tenant
       const tenant = await tx.tenant.create({
         data: { name: companyName, slug }
@@ -31,6 +143,7 @@ export const registerTenant = async (req, res) => {
       // 3. Hash password
       const hashedPassword = await bcrypt.hash(password, 12);
 
+      console.log(tenant.id);
       // 4. Create Admin User
       const user = await tx.user.create({
         data: {
@@ -44,10 +157,12 @@ export const registerTenant = async (req, res) => {
 
       // 5. Assign ADMIN role
       const adminRole = await tx.role.findUnique({
-        where: { name: 'ADMIN' }
+        where: { name: 'Admin' }
       });
-
-      await tx.userRole.create({
+      if (!adminRole) {
+        throw new Error('Admin role not found in database. Please run seed script first.');
+      }
+      await tx.UserRole.create({
         data: {
           userId: user.id,
           roleId: adminRole.id
@@ -389,110 +504,3 @@ export const logout = async (req, res) => {
 
   res.json({ message: 'Logged out successfully' });
 };
-
-// export const loginUser = async (req, res, next) => {
-//   try {
-//     const { email, password } = req.body;
-//     const { slug, role } = req.params;
-
-//     // --- Basic validation ---
-//     if (!slug) {
-//       return res.status(400).json({ message: 'Tenant slug is required' });
-//     }
-
-//     if (!role) {
-//       return res.status(400).json({ message: 'Role parameter is required' });
-//     }
-
-//     if (!email || !password) {
-//       return res.status(400).json({ message: 'Email and password are required' });
-//     }
-
-//     const normalizedEmail = email.toLowerCase().trim();
-//     const requestedRole = role.toUpperCase().trim();
-
-//     // --- Find tenant ---
-//     const tenant = await prisma.tenant.findUnique({
-//       where: { slug },
-//       select: { id: true, isActive: true }
-//     });
-
-//     if (!tenant || !tenant.isActive) {
-//       return res.status(404).json({
-//         message: 'Tenant not found or inactive'
-//       });
-//     }
-
-//     // --- Find user within tenant ---
-//     const user = await prisma.user.findFirst({
-//       where: {
-//         email: normalizedEmail,
-//         tenantId: tenant.id,
-//         isActive: true
-//       },
-//       select: {
-//         id: true,
-//         firstName: true,
-//         lastName: true,
-//         email: true,
-//         password: true,
-//         roles: {
-//           select: {
-//             role: {
-//               select: { name: true }
-//             }
-//           }
-//         }
-//       }
-//     });
-
-//     if (!user) {
-//       return res.status(401).json({ message: 'Invalid credentials' });
-//     }
-
-//     // --- Verify password ---
-//     const isPasswordValid = await bcrypt.compare(password, user.password);
-
-//     if (!isPasswordValid) {
-//       return res.status(401).json({ message: 'Invalid credentials' });
-//     }
-
-//     const roles = user.roles.map((ur) => ur.role.name.toUpperCase());
-
-//     if (!roles.length) {
-//       return res.status(403).json({
-//         message: 'User has no assigned roles'
-//       });
-//     }
-
-//     // --- Enforce role-based login ---
-//     if (!roles.includes(requestedRole)) {
-//       return res.status(403).json({
-//         message: `Access denied: user is not a ${requestedRole}`
-//       });
-//     }
-
-//     // --- Generate JWT with SINGLE active role ---
-//     const token = generateToken({
-//       userId: user.id,
-//       tenantId: tenant.id,
-//       tenant: slug,
-//       role: requestedRole
-//     });
-
-//     return res.status(200).json({
-//       message: 'Login successful',
-//       token,
-//       user: {
-//         id: user.id,
-//         firstName: user.firstName,
-//         lastName: user.lastName,
-//         email: user.email,
-//         roles,
-//         activeRole: requestedRole
-//       }
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };

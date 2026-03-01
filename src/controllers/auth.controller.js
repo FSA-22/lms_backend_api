@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { SUPER_USER_EMAIL, SUPERUSER_PASSWORD } from '../config/env.js';
+import { SUPER_USER_EMAIL, SUPER_USER_PASSWORD } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { generateSlug } from '../utils/slugify.js';
 import { generateToken } from '../Utils/generateToken.js';
@@ -96,7 +96,7 @@ import { generateToken } from '../Utils/generateToken.js';
 export const superUserLogin = async (req, res) => {
   const { email, password, role } = req.body;
   try {
-    if (email === SUPER_USER_EMAIL && password === SUPERUSER_PASSWORD){
+    if (email === SUPER_USER_EMAIL && password === SUPER_USER_PASSWORD){
       console.log(`logged-in as SUPERUSER`)
     }
   } catch (error) {
@@ -213,6 +213,11 @@ export const adminLogin = async (req, res, next) => {
   try {
     const { slug } = req.params;
     const { email, password } = req.body;
+
+    const isMatch = await bcrypt.compare(password, hashedPassword)
+        if (!isMatch) {
+            return res.status(401).send('Incorrect password')
+        }
 
     console.log('body:', req.body);
     console.log('slug:', slug);

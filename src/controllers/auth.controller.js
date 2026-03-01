@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs';
+import { SUPER_USER_EMAIL, SUPERUSER_PASSWORD } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { generateSlug } from '../utils/slugify.js';
-import { generateToken } from '../utils/generateToken.js';
+import { generateToken } from '../Utils/generateToken.js';
 
 // export const registerTenant = async (req, res) => {
 //   const { companyName, firstName, lastName, email, password } = req.body;
@@ -92,6 +93,29 @@ import { generateToken } from '../utils/generateToken.js';
 //   }
 // };
 
+export const superUserLogin = async (req, res) => {
+  const { email, password, role } = req.body;
+  try {
+    if (email === SUPER_USER_EMAIL && password === SUPERUSER_PASSWORD) {
+      console.log(`logged-in as SUPERUSER`);
+    }
+  } catch (error) {
+    res.json({
+      success: false,
+      message: 'invalid credentials'
+    });
+  }
+  const token = generateToken({
+    email: email,
+    role: role
+  });
+  res.status(200).json({
+    success: true,
+    token
+  });
+  console.log(req.body);
+};
+
 export const registerTenant = async (req, res) => {
   const { companyName, firstName, lastName, email, password } = req.body;
 
@@ -99,19 +123,18 @@ export const registerTenant = async (req, res) => {
   console.log('🔥 Tenant register hit');
 
   try {
+    // 1. Generate slug
+    let baseSlug = generateSlug(companyName);
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await prisma.tenant.findUnique({ where: { slug } })) {
+      counter++;
+      slug = `${baseSlug}-${counter}`;
+    }
+    console.log('slug:', slug);
+
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Generate slug
-      let baseSlug = generateSlug(companyName);
-      let slug = baseSlug;
-      let counter = 1;
-
-      console.log('slug:', slug);
-
-      while (await tx.tenant.findUnique({ where: { slug } })) {
-        counter++;
-        slug = `${baseSlug}-${counter}`;
-      }
-
       // 2. Create Tenant
       const tenant = await tx.tenant.create({
         data: { name: companyName, slug }
@@ -120,6 +143,7 @@ export const registerTenant = async (req, res) => {
       // 3. Hash password
       const hashedPassword = await bcrypt.hash(password, 12);
 
+      console.log(tenant.id);
       // 4. Create Admin User
       const user = await tx.user.create({
         data: {
@@ -135,8 +159,10 @@ export const registerTenant = async (req, res) => {
       const adminRole = await tx.role.findUnique({
         where: { name: 'ADMIN' }
       });
-
-      await tx.userRole.create({
+      if (!adminRole) {
+        throw new Error('Admin role not found in database. Please run seed script first.');
+      }
+      await tx.UserRole.create({
         data: {
           userId: user.id,
           roleId: adminRole.id
@@ -180,197 +206,6 @@ export const registerTenant = async (req, res) => {
   }
 };
 
-export const adminLogin = async (req, res, next) => {
-  try {
-    const { slug } = req.params;
-    const { email, password } = req.body;
-
-    console.log('body:', req.body);
-    console.log('slug:', slug);
-
-    if (!slug) {
-      return res.status(400).json({ message: 'Tenant slug is required' });
-    }
-
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
-
-    // Find tenant
-    const tenant = await prisma.tenant.findUnique({
-      where: { slug },
-      select: { id: true }
-    });
-
-    console.log('tenant:', tenant);
-
-    if (!tenant) {
-      return res.status(404).json({ message: 'Tenant not found' });
-    }
-
-    // Find user within tenant (composite unique: email + tenantId)
-    const user = await prisma.user.findUnique({
-      where: {
-        tenantId_email: {
-          tenantId: tenant.id,
-          email
-        }
-      },
-      select: {
-        id: true,
-        password: true,
-        isActive: true,
-        roles: {
-          select: {
-            role: {
-              select: {
-                id: true,
-                name: true
-              }
-            }
-          }
-        }
-      }
-    });
-
-    console.log('user:', user);
-
-    if (!user) {
-      return res
-        .status(401)
-        .json({ message: 'Invalid credentials or no such user in this organization' });
-    }
-
-    // Verify password
-    const isValid = await bcrypt.compare(password, user.password);
-
-    if (!isValid) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    //  Issue JWT
-    const token = generateToken({
-      userId: user.id,
-      tenantId: tenant.id,
-      tenant: slug,
-      role: user.roles
-    });
-
-    return res.status(200).json({
-      success: true,
-      token
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const loginUser = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-    const { slug, role } = req.params;
-
-    if (!slug) return res.status(400).json({ message: 'Tenant slug is required' });
-    if (!email || !password)
-      return res.status(400).json({ message: 'Email and password are required' });
-
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Find tenant
-    const tenant = await prisma.tenant.findUnique({
-      where: { slug },
-      select: { id: true, isActive: true }
-    });
-
-    if (!tenant || !tenant.isActive)
-      return res.status(404).json({ message: 'Tenant not found or inactive' });
-
-    //  Find user
-    const user = await prisma.user.findFirst({
-      where: { email: normalizedEmail, tenantId: tenant.id, isActive: true },
-      include: { roles: { select: { role: { select: { name: true } } } } }
-    });
-
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
-
-    //  Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) return res.status(401).json({ message: 'Invalid credentials' });
-
-    //  Extract role names
-    const roles = user.roles.map((ur) => ur.role.name.toUpperCase());
-
-    console.log('roles:', roles);
-
-    // Allow only the role from URL
-    const requestedRole = role.toUpperCase();
-
-    if (!roles.includes(requestedRole)) {
-      return res.status(403).json({ message: `Access denied: user is not a ${requestedRole}` });
-    }
-
-    // Generate JWT
-    const token = generateToken({
-      userId: user.id,
-      tenantId: tenant.id,
-      tenant: slug,
-      role: roles
-    });
-
-    return res.status(200).json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        roles
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-export const logout = async (req, res) => {
-  const { refreshToken } = req.body;
-  const { slug } = req.params;
-
-  if (!refreshToken) return res.status(400).json({ message: 'Refresh token required' });
-
-  //  Find tenant
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug },
-    select: { id: true }
-  });
-
-  if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
-
-  // Ensure token belongs to user + tenant
-  const tokenRecord = await prisma.refreshToken.findFirst({
-    where: {
-      token: refreshToken,
-      userId: req.user.userId,
-      tenantId: tenant.id,
-      revoked: false
-    }
-  });
-
-  if (!tokenRecord) return res.status(401).json({ message: 'Invalid refresh token' });
-
-  //  Revoke
-  await prisma.refreshToken.update({
-    where: { id: tokenRecord.id },
-    data: { revoked: true }
-  });
-
-  res.json({ message: 'Logged out successfully' });
-};
-
-/**
- * Create Instructor User
- */
 export const registerInstructor = async (req, res, next) => {
   try {
     const { firstName, lastName, email, password } = req.body;
@@ -454,9 +289,6 @@ export const registerInstructor = async (req, res, next) => {
   }
 };
 
-/**
- * Create Student User
- */
 export const registerStudent = async (req, res, next) => {
   try {
     const { firstName, lastName, email, password } = req.body;
@@ -538,4 +370,137 @@ export const registerStudent = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+export const login = async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+    const { email, password } = req.body;
+
+    if (!slug) {
+      return res.status(400).json({ message: 'Tenant slug is required' });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // --- Find tenant ---
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug },
+      select: { id: true, isActive: true }
+    });
+
+    if (!tenant || !tenant.isActive) {
+      return res.status(404).json({
+        message: 'Tenant not found or inactive'
+      });
+    }
+
+    // --- Find user ---
+    const user = await prisma.user.findUnique({
+      where: {
+        tenantId_email: {
+          tenantId: tenant.id,
+          email: normalizedEmail
+        }
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        password: true,
+        isActive: true,
+        roles: {
+          select: {
+            role: {
+              select: { name: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!user || !user.isActive) {
+      return res.status(401).json({
+        message: 'Invalid credentials or inactive account'
+      });
+    }
+
+    // --- Verify password ---
+    const isValid = await bcrypt.compare(password, user.password);
+
+    if (!isValid) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // --- Extract roles ---
+    const roleNames = user.roles.map((r) => r.role.name);
+
+    if (!roleNames.length) {
+      return res.status(403).json({
+        message: 'User has no assigned role'
+      });
+    }
+
+    // --- Issue JWT ---
+    const token = generateToken({
+      userId: user.id,
+      tenantId: tenant.id,
+      tenant: slug,
+      roles: roleNames
+    });
+
+    return res.status(200).json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        roles: roleNames
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const logout = async (req, res) => {
+  const { refreshToken } = req.body;
+  const { slug } = req.params;
+
+  if (!refreshToken) return res.status(400).json({ message: 'Refresh token required' });
+
+  //  Find tenant
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true }
+  });
+
+  if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+  // Ensure token belongs to user + tenant
+  const tokenRecord = await prisma.refreshToken.findFirst({
+    where: {
+      token: refreshToken,
+      userId: req.user.userId,
+      tenantId: tenant.id,
+      revoked: false
+    }
+  });
+
+  if (!tokenRecord) return res.status(401).json({ message: 'Invalid refresh token' });
+
+  //  Revoke
+  await prisma.refreshToken.update({
+    where: { id: tokenRecord.id },
+    data: { revoked: true }
+  });
+
+  res.json({ message: 'Logged out successfully' });
 };

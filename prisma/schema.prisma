@@ -124,6 +124,7 @@ model Enrollment {
   userId     String
   courseId   String
   enrolledAt DateTime  @default(now())
+  completedAt DateTime?
   deletedAt  DateTime?
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)

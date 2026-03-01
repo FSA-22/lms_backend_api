@@ -15,9 +15,9 @@ const lessonsRouter = express.Router();
  * Instructor creates lesson
  */
 lessonsRouter.post(
-  '/:slug/courses/:courseId/lessons',
+  '/:slug/lessons/:courseId',
   authenticate,
-  authorize('INSTRUCTOR'),
+  authorize('INSTRUCTOR', 'SUPERUSER', 'ADMIN'),
   createLesson
 );
 
@@ -25,9 +25,9 @@ lessonsRouter.post(
  * Fetch lessons in a course (students + instructors)
  */
 lessonsRouter.get(
-  '/:slug/courses/:courseId/lessons',
+  '/:slug/lessons/:courseId',
   authenticate,
-  authorize('STUDENT', 'INSTRUCTOR'),
+  authorize('STUDENT', 'INSTRUCTOR', 'SUPERUSER', 'ADMIN'),
   getLessonsByCourse
 );
 

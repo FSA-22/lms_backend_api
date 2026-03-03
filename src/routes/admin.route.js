@@ -38,6 +38,7 @@ adminRouter.get('/:slug/certificates', authenticate, authorize('ADMIN'), listCer
 
 adminRouter.get('/:slug/audit-logs', authenticate, authorize('ADMIN'), getAuditLogs);
 
-adminRouter.patch('/:slug/settings', authorize('ADMIN'), updateTenantSettings);
+// Tenant settings route & controller for updating branding, website, logo, support email, not complete yet
+adminRouter.patch('/:slug/settings', authenticate, authorize('ADMIN'), updateTenantSettings);
 
 export default adminRouter;

@@ -183,23 +183,40 @@ export const listCourses = async (req, res, next) => {
 export const approveCourse = async (req, res, next) => {
   try {
     const { tenantId } = req.user;
-    const { id } = req.params;
+    const { courseId } = req.params;
 
-    const course = await prisma.course.update({
-      where: { id, tenantId },
-      data: { status: 'APPROVED' }
+    if (!courseId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Course ID is required'
+      });
+    }
+
+    const result = await prisma.course.updateMany({
+      where: {
+        id: courseId, // NOT courseId
+        tenantId: tenantId
+      },
+      data: {
+        status: 'APPROVED'
+      }
     });
+
+    if (result.count === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found or does not belong to tenant'
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      message: 'Course approved',
-      data: course
+      message: 'Course approved'
     });
   } catch (error) {
     next(error);
   }
 };
-
 export const getEnrollmentStats = async (req, res, next) => {
   try {
     const { tenantId } = req.user;
@@ -207,7 +224,7 @@ export const getEnrollmentStats = async (req, res, next) => {
     const stats = await prisma.enrollment.groupBy({
       by: ['status'],
       where: { tenantId },
-      _count: true
+      _count: { _all: true }
     });
 
     return res.status(200).json({
@@ -225,10 +242,6 @@ export const listCertificates = async (req, res, next) => {
 
     const certificates = await prisma.certificate.findMany({
       where: { tenantId },
-      include: {
-        student: { select: { name: true, email: true } },
-        course: { select: { title: true } }
-      },
       orderBy: { issuedAt: 'desc' }
     });
 
@@ -240,21 +253,28 @@ export const listCertificates = async (req, res, next) => {
     next(error);
   }
 };
+
 export const getAuditLogs = async (req, res, next) => {
   try {
     const { tenantId } = req.user;
-    const { page = 1, limit = 20 } = req.query;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
 
     const logs = await prisma.auditLog.findMany({
       where: { tenantId },
       include: {
         user: {
-          select: { id: true, name: true, email: true }
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
         }
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
-      take: Number(limit)
+      take: limit
     });
 
     const total = await prisma.auditLog.count({
@@ -265,8 +285,8 @@ export const getAuditLogs = async (req, res, next) => {
       success: true,
       data: logs,
       pagination: {
-        page: Number(page),
-        limit: Number(limit),
+        page,
+        limit,
         total
       }
     });
@@ -274,26 +294,84 @@ export const getAuditLogs = async (req, res, next) => {
     next(error);
   }
 };
+
 export const updateTenantSettings = async (req, res, next) => {
   try {
-    const { tenantId } = req.user;
-    const { name, logoUrl } = req.body;
+    const { id: userId, tenantId, roles } = req.user;
 
-    const tenant = await prisma.tenant.update({
-      where: { id: tenantId },
-      data: { name, logoUrl }
+    // 1️⃣ Role Authorization
+    if (!roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized to update tenant settings'
+      });
+    }
+
+    // 2️⃣ Whitelist allowed fields for tenant settings
+    const allowedFields = ['name', 'slug', 'logoUrl', 'website', 'supportEmail'];
+    const updateData = {};
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) updateData[key] = req.body[key];
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid fields provided for update'
+      });
+    }
+
+    // 3️⃣ Perform atomic transaction: update tenant + audit log
+    const updatedTenant = await prisma.$transaction(async (tx) => {
+      // Ensure tenant exists and is active
+      const existingTenant = await tx.tenant.findFirst({
+        where: { id: tenantId, deletedAt: null }
+      });
+
+      if (!existingTenant) {
+        throw new Error('Tenant not found');
+      }
+
+      // Update tenant
+      const tenant = await tx.tenant.update({
+        where: { id: tenantId },
+        data: updateData
+      });
+
+      // Create audit log
+      await tx.auditLog.create({
+        data: {
+          tenantId,
+          userId,
+          action: 'UPDATE_TENANT_SETTINGS',
+          entityType: 'Tenant',
+          entityId: tenantId,
+          metadata: updateData,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent']
+        }
+      });
+
+      return tenant;
     });
 
+    // 4️⃣ Respond safely (only expose safe fields)
     return res.status(200).json({
       success: true,
-      message: 'Tenant settings updated',
-      data: tenant
+      message: 'Tenant settings updated successfully',
+      data: {
+        id: updatedTenant.id,
+        name: updatedTenant.name,
+        slug: updatedTenant.slug,
+        logoUrl: updatedTenant.logoUrl,
+        website: updatedTenant.website,
+        supportEmail: updatedTenant.supportEmail
+      }
     });
   } catch (error) {
     next(error);
   }
 };
-
 export const getUserStats = async (req, res, next) => {
   try {
     const { tenantId } = req.user;

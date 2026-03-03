@@ -88,6 +88,8 @@ model Course {
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
+  status      CourseStatus @default(PENDING)
+
   assessments Assessment[]
   progress    Progress[]
 
@@ -310,4 +312,10 @@ enum EnrollmentStatus {
   COMPLETED
   DROPPED
   CANCELLED
+}
+
+enum CourseStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

@@ -13,6 +13,7 @@ import assessmentResultRoute from './routes/assessmentResult.route.js';
 import lessonsRouter from './routes/lesson.route.js';
 import studentDashboardRouter from './routes/studentDashboard.route.js';
 import certificateRouter from './routes/certificate.route.js';
+import adminRouter from './routes/admin.route.js';
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use('/api/v1/', assessmentResultRoute);
 app.use('/api/v1/', lessonsRouter);
 app.use('/api/v1/', studentDashboardRouter);
 app.use('/api/v1/', certificateRouter);
+app.use('/api/v1/', adminRouter);
 
 /*
    404 Handler

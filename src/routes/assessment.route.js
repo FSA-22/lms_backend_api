@@ -1,49 +1,65 @@
-import express from 'express';
+import { Router } from 'express';
 import {
   createAssessment,
   getAssessments,
   getAssessmentById,
   updateAssessment,
-  deleteAssessment
+  deleteAssessment,
+  getStudentAssessments
 } from '../controllers/assessment.controller.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { authorize } from '../middlewares/authorize.middleware.js';
 
-const assessmentRouter = express.Router();
+const assessmentRouter = Router();
 
+// Create a new assessment
 assessmentRouter.post(
   '/:slug/courses/:courseId/assessments',
   authenticate,
-  authorize('INSTRUCTOR'),
+  authorize('INSTRUCTOR', 'ADMIN'),
   createAssessment
 );
 
+// Get all assessments for a course
 assessmentRouter.get(
   '/:slug/courses/:courseId/assessments',
   authenticate,
-  authorize('INSTRUCTOR'),
+  authorize('INSTRUCTOR', 'ADMIN'),
   getAssessments
 );
 
+// Get a single assessment by ID
 assessmentRouter.get(
-  '/:slug/assessments/courses/:courseId/:assessmentId',
+  '/:slug/courses/:courseId/assessments/:assessmentId',
   authenticate,
-  authorize('INSTRUCTOR'),
+  authorize('INSTRUCTOR', 'ADMIN'),
   getAssessmentById
 );
 
-assessmentRouter.delete(
-  '/:slug/assessments/courses/:courseId/:assessmentId',
+// Update an assessment
+assessmentRouter.patch(
+  '/:slug/courses/:courseId/assessments/:assessmentId',
   authenticate,
-  authorize('INSTRUCTOR'),
+  authorize('INSTRUCTOR', 'ADMIN'),
+  updateAssessment
+);
+
+// Soft delete an assessment
+assessmentRouter.delete(
+  '/:slug/courses/:courseId/assessments/:assessmentId',
+  authenticate,
+  authorize('INSTRUCTOR', 'ADMIN'),
   deleteAssessment
 );
 
-assessmentRouter.put(
-  '/:slug/assessments/courses/:courseId/:assessmentId',
+// ================= STUDENT ROUTES =================
+
+// Get all assessments a student can access (must complete all lessons)
+assessmentRouter.get(
+  '/:slug/courses/:courseId/student/assessments',
   authenticate,
-  authorize('INSTRUCTOR'),
-  updateAssessment
+  authorize('STUDENT', 'INSTRUCTOR', 'ADMIN'),
+  getStudentAssessments
 );
 
 export default assessmentRouter;

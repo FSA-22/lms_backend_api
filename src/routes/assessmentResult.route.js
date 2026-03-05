@@ -9,7 +9,7 @@ import { authorize } from '../middlewares/authorize.middleware.js';
 
 const assessmentResultRoute = Router();
 
-//  Student submits their assessment
+// ------------------ STUDENT SUBMITS ASSESSMENT ------------------
 assessmentResultRoute.post(
   '/:slug/assessments/:assessmentId/submit',
   authenticate,
@@ -17,15 +17,15 @@ assessmentResultRoute.post(
   submitAssessmentResult
 );
 
-//  Instructor views all results for a specific assessment
+// ------------------ INSTRUCTOR / ADMIN VIEWS ALL RESULTS ------------------
 assessmentResultRoute.get(
   '/:slug/assessments/:assessmentId/results',
   authenticate,
-  authorize('INSTRUCTOR', 'SUPERUSER'),
+  authorize('INSTRUCTOR', 'SUPERUSER', 'ADMIN'),
   getResultsByAssessment
 );
 
-//  Student views their own results
+// ------------------ STUDENT VIEWS OWN RESULTS ------------------
 assessmentResultRoute.get(
   '/:slug/students/:studentId/results',
   authenticate,

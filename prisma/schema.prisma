@@ -26,6 +26,8 @@ model Tenant {
   assessments       Assessment[]
   assessmentResults AssessmentResult[]
   certificates      Certificate[]
+  auditLogs         AuditLog[]
+  refreshTokens     RefreshToken[]
 
   @@index([slug])
 }
@@ -48,8 +50,10 @@ model User {
   progress    Progress[]
   roles       UserRole[]
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  certificates Certificate[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  certificates  Certificate[]
+  auditLogs     AuditLog[]
+  refreshTokens RefreshToken[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -86,6 +90,8 @@ model Course {
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
+  status CourseStatus @default(PENDING)
+
   assessments Assessment[]
   progress    Progress[]
 
@@ -119,12 +125,15 @@ model Lesson {
 }
 
 model Enrollment {
-  id         String    @id @default(uuid())
-  tenantId   String
-  userId     String
-  courseId   String
-  enrolledAt DateTime  @default(now())
-  deletedAt  DateTime?
+  id          String    @id @default(uuid())
+  tenantId    String
+  userId      String
+  courseId    String
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+  deletedAt   DateTime?
+
+  status EnrollmentStatus @default(ACTIVE)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -230,31 +239,31 @@ model TenantSettings {
 }
 
 model Certificate {
-  id              String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  tenantId        String
-  userId          String
-  courseId        String
+  tenantId String
+  userId   String
+  courseId String
 
-  certificateNo   String   @unique
+  certificateNo    String  @unique
   verificationHash String? @unique
 
-  issuedAt        DateTime @default(now())
-  issuedBy        String
+  issuedAt DateTime @default(now())
+  issuedBy String
 
-  status          CertificateStatus @default(ACTIVE)
+  status CertificateStatus @default(ACTIVE)
 
-  revokedAt       DateTime?
-  revokedBy       String?
-  revokeReason    String?
+  revokedAt    DateTime?
+  revokedBy    String?
+  revokeReason String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
   @@index([tenantId])
@@ -262,6 +271,43 @@ model Certificate {
   @@index([verificationHash])
   @@index([status])
 }
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  Tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  tenantId  String
+  revoked   Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
+}
+
 enum AssessmentType {
   QUIZ
   EXAM
@@ -277,4 +323,17 @@ enum SubscriptionStatus {
 enum CertificateStatus {
   ACTIVE
   REVOKED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  DROPPED
+  CANCELLED
+}
+
+enum CourseStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

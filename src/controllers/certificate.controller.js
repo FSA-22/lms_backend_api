@@ -1,270 +1,202 @@
-/**
- * Instructor issues certificate
- * Conditions:
- *  - Student completed course
- *  - Student passed required assessment
- */
+import { prisma } from '../lib/prisma.js';
+import crypto from 'crypto';
 
+/** Utility to generate verification hash */
+const generateVerificationHash = (payload) => {
+  const secret = process.env.CERTIFICATE_SECRET;
+  return crypto.createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+};
 
-/**
- * POST /courses/:courseId/certificates/:userId
- */
-export const issueCertificateController = async (req, res) => {
-  const { id: actorId, tenantId, role } = req.user;
-  const { courseId, userId } = req.params;
-
-  if (!courseId || !userId) {
-    return res.status(400).json({
-      success: false,
-      message: 'courseId and userId are required'
-    });
-  }
-
-  if (!['INSTRUCTOR', 'ADMIN'].includes(role)) {
-    return res.status(403).json({
-      success: false,
-      message: 'Forbidden: insufficient permissions'
-    });
-  }
-
+/** 🔹 Issue certificate (Instructor/Admin/Superuser) */
+export const issueCertificate = async (req, res, next) => {
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      // 1️⃣ Validate course (tenant-safe)
+    const { slug, courseId, userId: targetUserId } = req.params;
+    const { tenantId, id: actorId, roles } = req.user;
+
+    if (!slug || !courseId || !targetUserId) {
+      return res.status(400).json({ success: false, message: 'Missing required parameters' });
+    }
+
+    const certificate = await prisma.$transaction(async (tx) => {
+      // 1️⃣ Validate tenant
+      const tenant = await tx.tenant.findUnique({ where: { slug } });
+      if (!tenant || tenant.id !== tenantId) throw new Error('INVALID_TENANT');
+
+      // 2️⃣ Validate course
       const course = await tx.course.findFirst({
-        where: { id: courseId, tenantId }
+        where: { id: courseId, tenantId, deletedAt: null }
       });
+      if (!course) throw new Error('COURSE_NOT_FOUND');
 
-      if (!course) {
-        throw new Error('COURSE_NOT_FOUND');
-      }
-
-      // Instructor ownership
-      if (role === 'INSTRUCTOR' && course.instructorId !== actorId) {
+      // Instructor ownership enforcement
+      if (roles.includes('INSTRUCTOR') && course.instructorId !== actorId) {
         throw new Error('NOT_COURSE_OWNER');
       }
 
-      // 2️⃣ Validate enrollment
+      // 3️⃣ Validate enrollment
       const enrollment = await tx.enrollment.findFirst({
-        where: { userId, courseId, tenantId }
+        where: { userId: targetUserId, courseId, tenantId, deletedAt: null }
       });
+      if (!enrollment) throw new Error('NOT_ENROLLED');
+      if (!enrollment.completedAt) throw new Error('COURSE_NOT_COMPLETED');
 
-      if (!enrollment) {
-        throw new Error('NOT_ENROLLED');
-      }
-
-      if (!enrollment.completedAt) {
-        throw new Error('COURSE_NOT_COMPLETED');
-      }
-
-      // 3️⃣ Validate assessment pass (if required)
+      // 4️⃣ Validate assessments
       if (course.hasFinalAssessment) {
         const passedAttempt = await tx.assessmentSubmission.findFirst({
           where: {
-            userId,
+            userId: targetUserId,
             courseId,
             tenantId,
             score: { gte: course.passingScore ?? 0 }
           }
         });
-
-        if (!passedAttempt) {
-          throw new Error('ASSESSMENT_NOT_PASSED');
-        }
+        if (!passedAttempt) throw new Error('ASSESSMENT_NOT_PASSED');
       }
 
-      // 4️⃣ Duplicate protection (relies on DB unique constraint)
-      const certificate = await tx.certificate.create({
+      // 5️⃣ Check idempotency
+      const existingCertificate = await tx.certificate.findFirst({
+        where: { userId: targetUserId, courseId, tenantId, status: 'ACTIVE' }
+      });
+      if (existingCertificate) return existingCertificate;
+
+      // 6️⃣ Issue new certificate
+      const certificateNo = `CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+      const issuedAt = new Date();
+      const verificationHash = generateVerificationHash({
+        userId: targetUserId,
+        courseId,
+        certificateNo,
+        issuedAt: issuedAt.toISOString()
+      });
+
+      return tx.certificate.create({
         data: {
           tenantId,
-          userId,
+          userId: targetUserId,
           courseId,
+          certificateNo,
+          verificationHash,
+          issuedAt,
           issuedBy: actorId,
-          issuedAt: new Date()
+          status: 'ACTIVE'
         }
       });
-
-      return certificate;
     });
 
-    return res.status(201).json({
-      success: true,
-      message: 'Certificate issued successfully',
-      data: result
-    });
+    return res
+      .status(201)
+      .json({ success: true, message: 'Certificate issued', data: certificate });
   } catch (error) {
-    // Unique constraint fallback safety
-    if (error.code === 'P2002') {
-      return res.status(409).json({
-        success: false,
-        message: 'Certificate already exists'
-      });
-    }
-
     const errorMap = {
-      COURSE_NOT_FOUND: 404,
-      NOT_COURSE_OWNER: 403,
-      NOT_ENROLLED: 404,
-      COURSE_NOT_COMPLETED: 400,
-      ASSESSMENT_NOT_PASSED: 400
+      INVALID_TENANT: [403, 'Invalid tenant access'],
+      COURSE_NOT_FOUND: [404, 'Course not found'],
+      NOT_COURSE_OWNER: [403, 'You are not the course owner'],
+      NOT_ENROLLED: [404, 'User not enrolled in this course'],
+      COURSE_NOT_COMPLETED: [400, 'Course not completed'],
+      ASSESSMENT_NOT_PASSED: [400, 'Assessment not passed']
     };
 
-    const status = errorMap[error.message] || 500;
-
-    return res.status(status).json({
-      success: false,
-      message: error.message || 'Internal server error'
-    });
+    const [message] = errorMap[error.message] || [500, error.message || 'Internal server error'];
+    // return res.status(status).json({ success: false, message });
+    next(message);
   }
 };
 
-export const getUserCertificatesController = async (req, res) => {
-  const { tenantId } = req.user;
-  const { userId } = req.params;
-
+/** 🔹 Get all certificates of a user */
+export const getUserCertificates = async (req, res, next) => {
   try {
+    const { slug, userId } = req.params;
+    const { tenantId } = req.user;
+
+    const tenant = await prisma.tenant.findUnique({ where: { slug } });
+    if (!tenant || tenant.id !== tenantId) throw new Error('INVALID_TENANT');
+
     const certificates = await prisma.certificate.findMany({
       where: { userId, tenantId },
-      include: {
-        course: true,
-        issuedByUser: true
-      },
+      include: { course: true, issuedByUser: true },
       orderBy: { issuedAt: 'desc' }
     });
 
-    return res.json({
-      success: true,
-      count: certificates.length,
-      data: certificates
-    });
-  } catch {
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    return res.json({ success: true, count: certificates.length, data: certificates });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const getCourseCertificatesController = async (req, res) => {
-  const { tenantId } = req.user;
-  const { courseId } = req.params;
-
+/** 🔹 Get all certificates for a course */
+export const getCourseCertificates = async (req, res, next) => {
   try {
+    const { slug, courseId } = req.params;
+    const { tenantId } = req.user;
+
+    const tenant = await prisma.tenant.findUnique({ where: { slug } });
+    if (!tenant || tenant.id !== tenantId) throw new Error('INVALID_TENANT');
+
     const certificates = await prisma.certificate.findMany({
       where: { courseId, tenantId },
-      include: {
-        user: true
-      },
+      include: { user: true },
       orderBy: { issuedAt: 'desc' }
     });
 
-    return res.json({
-      success: true,
-      count: certificates.length,
-      data: certificates
-    });
-  } catch {
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    return res.json({ success: true, count: certificates.length, data: certificates });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const getSingleCertificateController = async (req, res) => {
-  const { tenantId } = req.user;
-  const { certificateId } = req.params;
-
+/** 🔹 Get single certificate by ID */
+export const getSingleCertificate = async (req, res, next) => {
   try {
-    const certificate = await prisma.certificate.findFirst({
-      where: {
-        id: certificateId,
-        tenantId
-      },
-      include: {
-        user: true,
-        course: true,
-        issuedByUser: true
-      }
+    const { slug, certificateId } = req.params;
+    const { tenantId } = req.user;
+
+    const tenant = await prisma.tenant.findUnique({ where: { slug } });
+    if (!tenant || tenant.id !== tenantId) throw new Error('INVALID_TENANT');
+
+    const certificate = await prisma.certificate.findUnique({
+      where: { id: certificateId },
+      include: { user: true, course: true, issuedByUser: true }
     });
 
-    if (!certificate) {
-      return res.status(404).json({
-        success: false,
-        message: 'Certificate not found'
-      });
+    if (!certificate)
+      return res.status(404).json({ success: false, message: 'Certificate not found' });
+    return res.json({ success: true, data: certificate });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** 🔹 Revoke certificate */
+export const revokeCertificate = async (req, res, next) => {
+  try {
+    const { slug, certificateId } = req.params;
+    const { tenantId, id: actorId, roles } = req.user;
+    const { reason } = req.body;
+
+    if (!reason || reason.trim().length < 5) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Revocation reason required (min 5 chars)' });
     }
 
-    return res.json({
-      success: true,
-      data: certificate
-    });
-  } catch {
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-};
+    if (!roles.includes('ADMIN') && !roles.includes('INSTRUCTOR')) {
+      return res
+        .status(403)
+        .json({ success: false, message: 'Forbidden: insufficient permissions' });
+    }
 
-import { prisma } from '../lib/prisma.js';
-
-/**
- * Requirements:
- * - Role: INSTRUCTOR (must own course) or ADMIN
- * - Certificate must belong to tenant
- * - Must not already be revoked
- * - Revocation reason required
- */
-export const revokeCertificateController = async (req, res) => {
-  const { id: actorId, tenantId, role } = req.user;
-  const { certificateId } = req.params;
-  const { reason } = req.body;
-
-  if (!reason || typeof reason !== 'string' || reason.trim().length < 5) {
-    return res.status(400).json({
-      success: false,
-      message: 'Valid revocation reason (min 5 characters) is required'
-    });
-  }
-
-  if (!['INSTRUCTOR', 'ADMIN'].includes(role)) {
-    return res.status(403).json({
-      success: false,
-      message: 'Forbidden: insufficient permissions'
-    });
-  }
-
-  try {
     const revokedCertificate = await prisma.$transaction(async (tx) => {
-      // 1️⃣ Fetch certificate (tenant isolated)
       const certificate = await tx.certificate.findFirst({
-        where: {
-          id: certificateId,
-          tenantId
-        },
-        include: {
-          course: {
-            select: { instructorId: true }
-          }
-        }
+        where: { id: certificateId, tenantId },
+        include: { course: { select: { instructorId: true } } }
       });
 
-      if (!certificate) {
-        throw new Error('CERTIFICATE_NOT_FOUND');
-      }
-
-      // 2️⃣ Idempotency protection
-      if (certificate.status === 'REVOKED') {
-        throw new Error('ALREADY_REVOKED');
-      }
-
-      // 3️⃣ Instructor ownership enforcement
-      if (role === 'INSTRUCTOR' && certificate.course.instructorId !== actorId) {
+      if (!certificate) throw new Error('CERTIFICATE_NOT_FOUND');
+      if (certificate.status === 'REVOKED') throw new Error('ALREADY_REVOKED');
+      if (roles.includes('INSTRUCTOR') && certificate.course.instructorId !== actorId)
         throw new Error('NOT_COURSE_OWNER');
-      }
 
-      // 4️⃣ Perform revocation
-      const updated = await tx.certificate.update({
+      return tx.certificate.update({
         where: { id: certificateId },
         data: {
           status: 'REVOKED',
@@ -273,15 +205,11 @@ export const revokeCertificateController = async (req, res) => {
           revokeReason: reason.trim()
         }
       });
-
-      return updated;
     });
 
-    return res.status(200).json({
-      success: true,
-      message: 'Certificate revoked successfully',
-      data: revokedCertificate
-    });
+    return res
+      .status(200)
+      .json({ success: true, message: 'Certificate revoked', data: revokedCertificate });
   } catch (error) {
     const errorMap = {
       CERTIFICATE_NOT_FOUND: 404,
@@ -289,11 +217,9 @@ export const revokeCertificateController = async (req, res) => {
       NOT_COURSE_OWNER: 403
     };
 
-    const statusCode = errorMap[error.message] || 500;
-
-    return res.status(statusCode).json({
-      success: false,
-      message: errorMap[error.message] ? error.message : 'Internal server error'
-    });
+    const status = errorMap[error.message] || 500;
+    return res
+      .status(status)
+      .json({ success: false, message: error.message || 'Internal server error' });
   }
 };

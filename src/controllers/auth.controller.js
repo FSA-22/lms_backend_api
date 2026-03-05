@@ -1,121 +1,54 @@
 import bcrypt from 'bcryptjs';
-import { SUPER_USER_EMAIL, SUPER_USER_PASSWORD } from '../config/env.js';
+import { NODE_ENV } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { generateSlug } from '../utils/slugify.js';
 import { generateToken } from '../Utils/generateToken.js';
+import { hashToken } from '../Utils/hashToken.js';
+import crypto from 'crypto';
 
-// export const registerTenant = async (req, res) => {
-//   const { companyName, firstName, lastName, email, password } = req.body;
-
-//   console.log(req.body);
-
-//   console.log('🔥 Tenant register hit');
-
-//   try {
-//     const result = await prisma.$transaction(async (tx) => {
-//       // 1. Generate slug
-//       let baseSlug = generateSlug(companyName);
-//       let slug = baseSlug;
-//       let counter = 1;
-
-//       console.log('slug:', slug);
-
-//       while (await tx.tenant.findUnique({ where: { slug } })) {
-//         counter++;
-//         slug = `${baseSlug}-${counter}`;
-//       }
-
-//       // 2. Create Tenant
-//       const tenant = await tx.tenant.create({
-//         data: { name: companyName, slug }
-//       });
-
-//       // 3. Hash password
-//       const hashedPassword = await bcrypt.hash(password, 12);
-
-//       // 4. Create Admin User
-//       const user = await tx.user.create({
-//         data: {
-//           tenantId: tenant.id,
-//           firstName,
-//           lastName,
-//           email,
-//           password: hashedPassword
-//         }
-//       });
-
-//       // 5. Assign ADMIN role
-//       const adminRole = await tx.role.findUnique({
-//         where: { name: 'ADMIN' }
-//       });
-
-//       await tx.userRole.create({
-//         data: {
-//           userId: user.id,
-//           roleId: adminRole.id
-//         }
-//       });
-
-//       // 6. Attach FREE subscription
-//       const freePlan = await tx.plan.findUnique({
-//         where: { name: 'FREE' }
-//       });
-
-//       await tx.subscription.create({
-//         data: {
-//           tenantId: tenant.id,
-//           planId: freePlan.id,
-//           status: 'ACTIVE'
-//         }
-//       });
-
-//       return { user, tenant };
-//     });
-
-//     // 7. Issue JWT
-//     const token = generateToken({
-//       userId: user.id,
-//       tenantId: tenant.id,
-//       tenant: slug,
-//       role: role
-//     });
-
-//     res.status(201).json({
-//       message: 'Tenant registered successfully',
-//       slug: result.tenant.slug,
-//       token
-//     });
-
-//     console.log('result:', result);
-//   } catch (error) {
-//     console.error(error.message);
-//     res.status(500).json({ message: 'Registration failed' });
-//   }
-// };
-
-export const superUserLogin = async (req, res) => {
-  const { email, password, role } = req.body;
+export const superUserLogin = async (req, res, next) => {
   try {
-    if (email === SUPER_USER_EMAIL && password === SUPER_USER_PASSWORD){
-      console.log(`logged-in as SUPERUSER`)
-    }
-  } catch {
-    res.json({
-      success: false,
-      message: "invalid credentials"
-    })
-    return
+    const { email, password } = req.body;
+
+    if (!email || !password)
+      return res.status(400).json({ message: 'Email and password required' });
+
+    const user = await prisma.user.findFirst({
+      where: {
+        email: email.toLowerCase().trim(),
+        roles: {
+          some: {
+            role: {
+              name: 'SUPER_ADMIN'
+            }
+          }
+        }
+      },
+      include: {
+        roles: {
+          include: { role: true }
+        }
+      }
+    });
+
+    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) return res.status(401).json({ message: 'Invalid credentials' });
+
+    const accessToken = generateToken({
+      userId: user.id,
+      roles: ['SUPER_ADMIN']
+    });
+
+    return res.status(200).json({
+      message: 'Super admin login successful',
+      accessToken
+    });
+  } catch (error) {
+    next(error);
   }
-  const token = generateToken({
-    email: email,
-    role: role
-  })
-  res.status(200).json({
-    success: true,
-    token
-  })
-  console.log(req.body);
-}
+};
 
 export const registerTenant = async (req, res) => {
   const { companyName, firstName, lastName, email, password } = req.body;
@@ -129,7 +62,6 @@ export const registerTenant = async (req, res) => {
     let slug = baseSlug;
     let counter = 1;
 
-  
     while (await prisma.tenant.findUnique({ where: { slug } })) {
       counter++;
       slug = `${baseSlug}-${counter}`;
@@ -137,17 +69,15 @@ export const registerTenant = async (req, res) => {
     console.log('slug:', slug);
 
     const result = await prisma.$transaction(async (tx) => {
-
       // 2. Create Tenant
       const tenant = await tx.tenant.create({
         data: { name: companyName, slug }
       });
-    
 
       // 3. Hash password
       const hashedPassword = await bcrypt.hash(password, 12);
 
-      console.log(tenant.id)
+      console.log(tenant.id);
       // 4. Create Admin User
       const user = await tx.user.create({
         data: {
@@ -161,7 +91,7 @@ export const registerTenant = async (req, res) => {
 
       // 5. Assign ADMIN role
       const adminRole = await tx.role.findUnique({
-        where: { name: 'Admin' }
+        where: { name: 'ADMIN' }
       });
       if (!adminRole) {
         throw new Error('Admin role not found in database. Please run seed script first.');
@@ -210,198 +140,6 @@ export const registerTenant = async (req, res) => {
   }
 };
 
-export const adminLogin = async (req, res, next) => {
-
-  try {
-    const { slug } = req.params;
-    const { email, password } = req.body;
-
-    console.log('body:', req.body);
-    console.log('slug:', slug);
-
-    if (!slug) {
-      return res.status(400).json({ message: 'Tenant slug is required' });
-    }
-
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
-
-    // Find tenant
-    const tenant = await prisma.tenant.findUnique({
-      where: { slug },
-      select: { id: true }
-    });
-
-    console.log('tenant:', tenant);
-
-    if (!tenant) {
-      return res.status(404).json({ message: 'Tenant not found' });
-    }
-
-    // Find user within tenant (composite unique: email + tenantId)
-    const user = await prisma.user.findUnique({
-      where: {
-        tenantId_email: {
-          tenantId: tenant.id,
-          email
-        }
-      },
-      select: {
-        id: true,
-        password: true,
-        isActive: true,
-        roles: {
-          select: {
-            role: {
-              select: {
-                id: true,
-                name: true
-              }
-            }
-          }
-        }
-      }
-    });
-
-    console.log('user:', user);
-
-    if (!user) {
-      return res
-        .status(401)
-        .json({ message: 'Invalid credentials or no such user in this organization' });
-    }
-
-    // Verify password
-    const isValid = await bcrypt.compare(password, user.password);
-
-    if (!isValid) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    //  Issue JWT
-    const token = generateToken({
-      userId: user.id,
-      tenantId: tenant.id,
-      tenant: slug,
-      role: user.roles
-    });
-
-    return res.status(200).json({
-      success: true,
-      token
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const loginUser = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-    const { slug, role } = req.params;
-
-    if (!slug) return res.status(400).json({ message: 'Tenant slug is required' });
-    if (!email || !password)
-      return res.status(400).json({ message: 'Email and password are required' });
-
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Find tenant
-    const tenant = await prisma.tenant.findUnique({
-      where: { slug },
-      select: { id: true, isActive: true }
-    });
-
-    if (!tenant || !tenant.isActive)
-      return res.status(404).json({ message: 'Tenant not found or inactive' });
-
-    //  Find user
-    const user = await prisma.user.findFirst({
-      where: { email: normalizedEmail, tenantId: tenant.id, isActive: true },
-      include: { roles: { select: { role: { select: { name: true } } } } }
-    });
-
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
-
-    //  Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) return res.status(401).json({ message: 'Invalid credentials' });
-
-    //  Extract role names
-    const roles = user.roles.map((ur) => ur.role.name.toUpperCase());
-
-    console.log('roles:', roles);
-
-    // Allow only the role from URL
-    const requestedRole = role.toUpperCase();
-
-    if (!roles.includes(requestedRole)) {
-      return res.status(403).json({ message: `Access denied: user is not a ${requestedRole}` });
-    }
-
-    // Generate JWT
-    const token = generateToken({
-      userId: user.id,
-      tenantId: tenant.id,
-      tenant: slug,
-      role: roles
-    });
-
-    return res.status(200).json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        roles
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-export const logout = async (req, res) => {
-  const { refreshToken } = req.body;
-  const { slug } = req.params;
-
-  if (!refreshToken) return res.status(400).json({ message: 'Refresh token required' });
-
-  //  Find tenant
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug },
-    select: { id: true }
-  });
-
-  if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
-
-  // Ensure token belongs to user + tenant
-  const tokenRecord = await prisma.refreshToken.findFirst({
-    where: {
-      token: refreshToken,
-      userId: req.user.userId,
-      tenantId: tenant.id,
-      revoked: false
-    }
-  });
-
-  if (!tokenRecord) return res.status(401).json({ message: 'Invalid refresh token' });
-
-  //  Revoke
-  await prisma.refreshToken.update({
-    where: { id: tokenRecord.id },
-    data: { revoked: true }
-  });
-
-  res.json({ message: 'Logged out successfully' });
-};
-
-/**
- * Create Instructor User
- */
 export const registerInstructor = async (req, res, next) => {
   try {
     const { firstName, lastName, email, password } = req.body;
@@ -485,9 +223,6 @@ export const registerInstructor = async (req, res, next) => {
   }
 };
 
-/**
- * Create Student User
- */
 export const registerStudent = async (req, res, next) => {
   try {
     const { firstName, lastName, email, password } = req.body;
@@ -568,5 +303,198 @@ export const registerStudent = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+export const login = async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+    const { email, password } = req.body;
+
+    if (!slug) return res.status(400).json({ message: 'Tenant slug is required' });
+    if (!email || !password)
+      return res.status(400).json({ message: 'Email and password are required' });
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Find tenant
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug },
+      select: { id: true, isActive: true }
+    });
+
+    if (!tenant || !tenant.isActive)
+      return res.status(404).json({ message: 'Tenant not found or inactive' });
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { tenantId_email: { tenantId: tenant.id, email: normalizedEmail } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        password: true,
+        isActive: true,
+        roles: { select: { role: { select: { name: true } } } }
+      }
+    });
+
+    if (!user || !user.isActive)
+      return res.status(401).json({ message: 'Invalid credentials or inactive account' });
+
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) return res.status(401).json({ message: 'Invalid credentials' });
+
+    const roleNames = user.roles.map((r) => r.role.name);
+    if (!roleNames.length) return res.status(403).json({ message: 'User has no assigned role' });
+
+    // Generate access token
+    const accessToken = generateToken({
+      userId: user.id,
+      tenantId: tenant.id,
+      tenant: slug,
+      roles: roleNames
+    });
+
+    // Save refresh token in DB
+    const rawRefreshToken = crypto.randomBytes(64).toString('hex');
+    const hashedRefreshToken = hashToken(rawRefreshToken);
+
+    await prisma.refreshToken.create({
+      data: {
+        token: hashedRefreshToken,
+        userId: user.id,
+        tenantId: tenant.id,
+        revoked: false,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      }
+    });
+
+    // Set refresh token as HttpOnly cookie
+    res.cookie('refreshToken', rawRefreshToken, {
+      httpOnly: true,
+      secure: NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+
+    return res.status(200).json({
+      message: 'Login successful',
+      accessToken,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        roles: roleNames
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// --- Refresh: issue new access token using HttpOnly cookie ---
+export const refreshAccessToken = async (req, res) => {
+  try {
+    const refreshTokenValue = req.cookies.refreshToken;
+    if (!refreshTokenValue) return res.status(401).json({ message: 'No refresh token found' });
+
+    const hashedIncoming = hashToken(refreshTokenValue);
+
+    const tokenRecord = await prisma.refreshToken.findFirst({
+      where: {
+        token: hashedIncoming,
+        revoked: false,
+        expiresAt: { gt: new Date() }
+      },
+      include: { user: true }
+    });
+
+    if (!tokenRecord) return res.status(401).json({ message: 'Invalid or revoked refresh token' });
+
+    // Revoke old token
+    await prisma.refreshToken.update({
+      where: { id: tokenRecord.id },
+      data: { revoked: true }
+    });
+
+    // Generate new refresh token
+    const newRawToken = crypto.randomBytes(64).toString('hex');
+    const newHashedToken = hashToken(newRawToken);
+
+    await prisma.refreshToken.create({
+      data: {
+        token: newHashedToken,
+        userId: tokenRecord.user.id,
+        tenantId: tokenRecord.tenantId,
+        revoked: false,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      }
+    });
+
+    // Replace cookie
+    res.cookie('refreshToken', newRawToken, {
+      httpOnly: true,
+      secure: NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tokenRecord.tenantId },
+      select: { slug: true }
+    });
+    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    const roleNames = await prisma.userRole.findMany({
+      where: { userId: tokenRecord.user.id },
+      select: { role: { select: { name: true } } }
+    });
+
+    // Issue new access token
+    const accessToken = generateToken({
+      userId: tokenRecord.user.id,
+      tenantId: tokenRecord.tenantId,
+      tenant: tenant.slug,
+      roles: roleNames.map((r) => r.role.name)
+    });
+
+    return res.status(200).json({ accessToken });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// --- Logout: revoke refresh token and clear cookie ---
+export const logout = async (req, res) => {
+  try {
+    const refreshTokenValue = req.cookies.refreshToken;
+    if (!refreshTokenValue) return res.status(400).json({ message: 'No refresh token found' });
+
+    const hashedIncoming = hashToken(refreshTokenValue);
+
+    const tokenRecord = await prisma.refreshToken.findFirst({
+      where: { token: hashedIncoming, revoked: false }
+    });
+
+    if (tokenRecord) {
+      await prisma.refreshToken.update({
+        where: { id: tokenRecord.id },
+        data: { revoked: true }
+      });
+    }
+
+    // Clear cookie
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+
+    return res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };

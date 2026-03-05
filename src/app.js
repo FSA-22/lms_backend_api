@@ -1,7 +1,9 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+
 import { CLIENT_URL, NODE_ENV } from './config/env.js';
 import authRouter from './routes/auth.route.js';
 import userRouter from './routes/user.route.js';
@@ -14,12 +16,15 @@ import lessonsRouter from './routes/lesson.route.js';
 import studentDashboardRouter from './routes/studentDashboard.route.js';
 import certificateRouter from './routes/certificate.route.js';
 import adminRouter from './routes/admin.route.js';
+import { globalLimiter } from './middlewares/limiter.middleware.js';
 
 const app = express();
 
 /*
    Core Middlewares
 */
+
+app.use(globalLimiter);
 
 // Security headers
 app.use(helmet());
@@ -35,6 +40,7 @@ app.use(
 // Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Logger (dev only)
 if (NODE_ENV !== 'production') {

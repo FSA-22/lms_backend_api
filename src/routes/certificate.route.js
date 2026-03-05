@@ -1,83 +1,64 @@
 import { Router } from 'express';
-import { issueCertificate } from '../controllers/certificate.controller.js';
-
+import {
+  issueCertificate,
+  getUserCertificates,
+  getCourseCertificates,
+  getSingleCertificate,
+  revokeCertificate
+} from '../controllers/certificate.controller.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { authorize } from '../middlewares/authorize.middleware.js';
 
-// import {
-//   issueCertificateController,
-//   getUserCertificatesController,
-//   getCourseCertificatesController,
-//   getSingleCertificateController
-// } from '../controllers/certificate.controller.js';
-
-// const certificateRouter = Router();
+const certificateRouter = Router();
 
 /**
  * Issue certificate (Instructor/Admin only)
  */
-// certificateRouter.post(
-//   '/:slug/courses/:courseId/certificates/:userId',
-//   authenticate,
-
-//   authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
-//   issueCertificateController
-// );
+certificateRouter.post(
+  '/:slug/courses/:courseId/certificates/:userId',
+  authenticate,
+  authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
+  issueCertificate
+);
 
 /**
  * Get all certificates of a user
  */
-// certificateRouter.get(
-//   '/:slug/users/:userId/certificates',
-//   authenticate,
-
-//   authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
-//   getUserCertificatesController
-// );
+certificateRouter.get(
+  '/:slug/users/:userId/certificates',
+  authenticate,
+  authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
+  getUserCertificates
+);
 
 /**
  * Get all certificates issued for a course
  */
-// certificateRouter.get(
-//   '/:slug/courses/:courseId/certificates',
-//   authenticate,
-
-//   authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
-//   getCourseCertificatesController
-// );
+certificateRouter.get(
+  '/:slug/courses/:courseId/certificates',
+  authenticate,
+  authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
+  getCourseCertificates
+);
 
 /**
  * Get single certificate by ID
  */
-// certificateRouter.get(
-//   '/:slug/certificates/:certificateId',
-//   authenticate,
-
-//   authorize('INSTRUCTOR', 'ADMIN', 'STUDENT', 'SUPERUSER'),
-
-//   getSingleCertificateController
-// );
+certificateRouter.get(
+  '/:slug/certificates/:certificateId',
+  authenticate,
+  authorize('INSTRUCTOR', 'ADMIN', 'STUDENT', 'SUPERUSER'),
+  getSingleCertificate
+);
 
 /**
- * Patch (revoke) single certificate by ID
+ * Revoke a certificate
  */
-
-// certificateRouter.patch(
-//   '/:slug/certificates/:certificateId/revoke',
-//   authenticate,
-//   authorize('INSTRUCTOR', 'ADMIN', 'STUDENT', 'SUPERUSER'),
-
-//   getCourseCertificatesController
-// );
-
-const certificateRouter = Router();
-
-// Student requests certificate (auto-validation enforced)
-certificateRouter.post(
-  '/:slug/courses/:courseId/certificate',
+certificateRouter.patch(
+  '/:slug/certificates/:certificateId/revoke',
   authenticate,
-  authorize('STUDENT', 'INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
-  issueCertificate
+  authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
+  revokeCertificate
 );
 
 export default certificateRouter;

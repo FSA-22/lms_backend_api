@@ -81,22 +81,16 @@ export const submitAssessmentResult = async (req, res, next) => {
 // ---------------- GET RESULTS BY ASSESSMENT (INSTRUCTOR) ----------------
 export const getResultsByAssessment = async (req, res, next) => {
   try {
-    const { slug, assessmentId } = req.params;
-    const { tenantId, id: userId, roles } = req.user;
+    const { assessmentId } = req.params;
+    const { tenantId, id: userId } = req.user;
 
-    if (!assessmentId || !slug)
-      return res.status(400).json({ message: 'Tenant slug and assessment ID are required' });
-
-    // Validate tenant
-    const tenant = await prisma.tenant.findUnique({ where: { slug } });
-    if (!tenant || tenant.id !== tenantId)
-      return res.status(403).json({ message: 'Invalid tenant access' });
+    if (!assessmentId) return res.status(400).json({ message: 'Assessment ID is required' });
 
     // Validate assessment belongs to instructor
     const assessment = await prisma.assessment.findFirst({
       where: {
         id: assessmentId,
-        tenantId: tenant.id,
+        tenantId,
         deletedAt: null,
         course: { instructorId: userId, deletedAt: null }
       },
@@ -106,7 +100,7 @@ export const getResultsByAssessment = async (req, res, next) => {
       return res.status(404).json({ message: 'Assessment not found or not owned by instructor' });
 
     const results = await prisma.assessmentResult.findMany({
-      where: { assessmentId, tenantId: tenant.id, deletedAt: null },
+      where: { assessmentId, tenantId, deletedAt: null },
       include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
       orderBy: { submittedAt: 'desc' }
     });

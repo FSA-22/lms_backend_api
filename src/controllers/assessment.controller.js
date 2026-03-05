@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 
 // ---------------- CREATE ASSESSMENT ----------------
-export const createAssessment = async (req, res, next) => {
+export const createAssessment1 = async (req, res, next) => {
   try {
     const { title, type, totalMarks } = req.body;
     const { tenantId, id: userId } = req.user;
@@ -23,6 +23,32 @@ export const createAssessment = async (req, res, next) => {
         type,
         totalMarks
       }
+    });
+
+    res.status(201).json({ success: true, data: assessment });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createAssessment = async (req, res, next) => {
+  try {
+    const { title, type, totalMarks } = req.body;
+    const { tenantId, id: userId } = req.user;
+    const { courseId } = req.params;
+
+    if (!courseId)
+      return res.status(400).json({ success: false, message: 'Course ID is required' });
+
+    // Verify instructor owns course
+    const course = await prisma.course.findFirst({
+      where: { id: courseId, tenantId, instructorId: userId, deletedAt: null }
+    });
+    if (!course)
+      return res.status(404).json({ success: false, message: 'Course not found or not yours' });
+
+    const assessment = await prisma.assessment.create({
+      data: { tenantId, courseId, title, type, totalMarks }
     });
 
     res.status(201).json({ success: true, data: assessment });
@@ -79,11 +105,9 @@ export const getAssessmentById = async (req, res, next) => {
 // ---------------- UPDATE ASSESSMENT ----------------
 export const updateAssessment = async (req, res, next) => {
   try {
-    const { tenantId, id: userId, roles } = req.user;
+    const { tenantId, id: userId } = req.user;
     const { assessmentId } = req.params;
     const { title, type, totalMarks } = req.body;
-
-    if (!roles.includes('INSTRUCTOR')) return res.status(403).json({ message: 'Unauthorized' });
 
     const assessment = await prisma.assessment.findFirst({
       where: { id: assessmentId, tenantId, deletedAt: null },
@@ -94,9 +118,19 @@ export const updateAssessment = async (req, res, next) => {
     if (assessment.course.instructorId !== userId)
       return res.status(403).json({ message: 'Not allowed to update this assessment' });
 
+    // Build partial update object dynamically
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (type !== undefined) updateData.type = type;
+    if (totalMarks !== undefined) updateData.totalMarks = totalMarks;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: 'No valid fields provided for update' });
+    }
+
     const updated = await prisma.assessment.update({
       where: { id: assessmentId },
-      data: { title, type, totalMarks }
+      data: updateData
     });
 
     res.json({ success: true, data: updated });
@@ -104,14 +138,13 @@ export const updateAssessment = async (req, res, next) => {
     next(error);
   }
 };
-
 // ---------------- DELETE ASSESSMENT (SOFT DELETE) ----------------
 export const deleteAssessment = async (req, res, next) => {
   try {
     const { tenantId, id: userId, roles } = req.user;
     const { assessmentId } = req.params;
 
-    if (!roles.includes('INSTRUCTOR')) return res.status(403).json({ message: 'Unauthorized' });
+    // if (!roles.includes('INSTRUCTOR')) return res.status(403).json({ message: 'Unauthorized' });
 
     const assessment = await prisma.assessment.findFirst({
       where: { id: assessmentId, tenantId, deletedAt: null },

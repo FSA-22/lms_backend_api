@@ -1,16 +1,28 @@
 import { Router } from 'express';
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { authorize } from '../middlewares/authorize.middleware.js';
-import { courseEnrollment } from '../controllers/enrollment.controller.js';
+import { courseEnrollment, getEnrollments } from '../controllers/enrollment.controller.js';
 
 const enrollRouter = Router();
 
-// Create a course (INSTRUCTOR only)
+/**
+ * Enroll in a course (STUDENT only)
+ */
 enrollRouter.post(
-  '/:slug/enrollments/:courseId',
+  '/:slug/courses/:courseId/enrollments',
   authenticate,
   authorize('STUDENT'),
   courseEnrollment
+);
+
+/**
+ * Get enrollments for a course (INSTRUCTOR / ADMIN / SUPERUSER)
+ */
+enrollRouter.get(
+  '/:slug/courses/:courseId/enrollments',
+  authenticate,
+  authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
+  getEnrollments
 );
 
 export default enrollRouter;

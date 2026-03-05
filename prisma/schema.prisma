@@ -27,6 +27,7 @@ model Tenant {
   assessmentResults AssessmentResult[]
   certificates      Certificate[]
   auditLogs         AuditLog[]
+  refreshTokens     RefreshToken[]
 
   @@index([slug])
 }
@@ -49,9 +50,10 @@ model User {
   progress    Progress[]
   roles       UserRole[]
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  certificates Certificate[]
-  auditLogs    AuditLog[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  certificates  Certificate[]
+  auditLogs     AuditLog[]
+  refreshTokens RefreshToken[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -88,7 +90,7 @@ model Course {
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
-  status      CourseStatus @default(PENDING)
+  status CourseStatus @default(PENDING)
 
   assessments Assessment[]
   progress    Progress[]
@@ -288,6 +290,22 @@ model AuditLog {
   @@index([tenantId])
   @@index([userId])
   @@index([createdAt])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  tenantId  String
+  revoked   Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
 }
 
 enum AssessmentType {

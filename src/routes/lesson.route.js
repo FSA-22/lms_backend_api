@@ -1,4 +1,4 @@
-import express from 'express';
+import { Router } from 'express';
 import {
   createLesson,
   getLessonsByCourse,
@@ -9,25 +9,25 @@ import {
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { authorize } from '../middlewares/authorize.middleware.js';
 
-const lessonsRouter = express.Router();
+const lessonsRouter = Router();
 
 /**
- * Instructor creates lesson
+ * Create Lesson
  */
 lessonsRouter.post(
-  '/:slug/lessons/:courseId',
+  '/:slug/courses/:courseId/lessons',
   authenticate,
-  authorize('INSTRUCTOR', 'SUPERUSER', 'ADMIN'),
+  authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
   createLesson
 );
 
 /**
- * Fetch lessons in a course (students + instructors)
+ * Get all lessons in course
  */
 lessonsRouter.get(
-  '/:slug/lessons/:courseId',
+  '/:slug/courses/:courseId/lessons',
   authenticate,
-  authorize('STUDENT', 'INSTRUCTOR', 'SUPERUSER', 'ADMIN'),
+  authorize('STUDENT', 'INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
   getLessonsByCourse
 );
 
@@ -35,24 +35,29 @@ lessonsRouter.get(
  * Get single lesson
  */
 lessonsRouter.get(
-  '/:slug/lessons/:lessonId',
+  '/:slug/courses/:courseId/lessons/:lessonId',
   authenticate,
-  authorize('STUDENT', 'INSTRUCTOR'),
+  authorize('STUDENT', 'INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
   getLessonById
 );
 
 /**
- * Update lesson (instructor only)
+ * Update lesson
  */
-lessonsRouter.put('/:slug/lessons/:lessonId', authenticate, authorize('INSTRUCTOR'), updateLesson);
+lessonsRouter.patch(
+  '/:slug/courses/:courseId/lessons/:lessonId',
+  authenticate,
+  authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
+  updateLesson
+);
 
 /**
  * Soft delete lesson
  */
 lessonsRouter.delete(
-  '/:slug/lessons/:lessonId',
+  '/:slug/courses/:courseId/lessons/:lessonId',
   authenticate,
-  authorize('INSTRUCTOR'),
+  authorize('INSTRUCTOR', 'ADMIN', 'SUPERUSER'),
   deleteLesson
 );
 

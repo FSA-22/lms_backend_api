@@ -1,4 +1,4 @@
-import express, { Router } from 'express';
+import { Router } from 'express';
 import {
   createAssessment,
   getAssessments,
@@ -12,43 +12,53 @@ import { authorize } from '../middlewares/authorize.middleware.js';
 
 const assessmentRouter = Router();
 
-// Instructor routes
+// Create a new assessment
 assessmentRouter.post(
   '/:slug/courses/:courseId/assessments',
   authenticate,
   authorize('INSTRUCTOR', 'ADMIN'),
   createAssessment
 );
+
+// Get all assessments for a course
 assessmentRouter.get(
   '/:slug/courses/:courseId/assessments',
   authenticate,
   authorize('INSTRUCTOR', 'ADMIN'),
   getAssessments
 );
+
+// Get a single assessment by ID
 assessmentRouter.get(
-  '/:slug/assessments/courses/:courseId/:assessmentId',
+  '/:slug/courses/:courseId/assessments/:assessmentId',
   authenticate,
-  authorize('INSTRUCTOR'),
+  authorize('INSTRUCTOR', 'ADMIN'),
   getAssessmentById
 );
-assessmentRouter.put(
-  '/:slug/assessments/courses/:courseId/:assessmentId',
+
+// Update an assessment
+assessmentRouter.patch(
+  '/:slug/courses/:courseId/assessments/:assessmentId',
   authenticate,
-  authorize('INSTRUCTOR'),
+  authorize('INSTRUCTOR', 'ADMIN'),
   updateAssessment
 );
+
+// Soft delete an assessment
 assessmentRouter.delete(
-  '/:slug/assessments/courses/:courseId/:assessmentId',
+  '/:slug/courses/:courseId/assessments/:assessmentId',
   authenticate,
-  authorize('INSTRUCTOR'),
+  authorize('INSTRUCTOR', 'ADMIN'),
   deleteAssessment
 );
 
-// Student routes
+// ================= STUDENT ROUTES =================
+
+// Get all assessments a student can access (must complete all lessons)
 assessmentRouter.get(
-  '/:slug/student/courses/:courseId/assessments',
+  '/:slug/courses/:courseId/student/assessments',
   authenticate,
-  authorize('STUDENT'),
+  authorize('STUDENT', 'INSTRUCTOR', 'ADMIN'),
   getStudentAssessments
 );
 

@@ -15,7 +15,10 @@ export const {
   SUPER_USER_NAME,
   SUPER_USER_EMAIL,
   SUPERUSER_PASSWORD,
-  CERTIFICATE_SECRET
+  CERTIFICATE_SECRET,
+  REDIS_HOST,
+  REDIS_PORT,
+  REDIS_PASSWORD
 } = process.env;
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is not defined');

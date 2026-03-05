@@ -4,10 +4,9 @@ import { prisma } from '../lib/prisma.js';
  * Create a course
  */
 export const createCourse = async (req, res, next) => {
-  try {
-    const { title, description, isPublished } = req.body;
+  try{
+    const {title, description, isPublished } = req.body;
 
-    // Create course
     const course = await prisma.course.create({
       data: {
         tenantId: req.user.tenantId,
@@ -57,7 +56,7 @@ export const getCourses = async (req, res, next) => {
     }
 
     // Optional filter override (for ADMIN only)
-    if (roles.includes('ADMIN') && published !== undefined) {
+    if (roles.includes('ADMIN', 'SUPERUSER'.toLowerCase()) && published !== undefined) {
       whereClause.isPublished = published === 'true';
     }
 

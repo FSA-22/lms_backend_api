@@ -8,7 +8,7 @@ const userRouter = Router();
 
 userRouter.post('/superuser/login', superUserLogin);
 userRouter.get('/:slug/me', authenticate, getCurrentUser);
-userRouter.get('/:slug/users', authenticate, authorize('ADMIN', 'SUPERUSER'), getAllUsers);
+userRouter.get('/:slug/users', authenticate, authorize('ADMIN', 'SUPERUSER'.toLowerCase()), getAllUsers);
 
 export default userRouter;
 getCurrentUser;

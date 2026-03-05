@@ -99,11 +99,12 @@ export const superUserLogin = async (req, res) => {
     if (email === SUPER_USER_EMAIL && password === SUPER_USER_PASSWORD){
       console.log(`logged-in as SUPERUSER`)
     }
-  } catch (error) {
+  } catch {
     res.json({
       success: false,
       message: "invalid credentials"
     })
+    return
   }
   const token = generateToken({
     email: email,
@@ -210,14 +211,10 @@ export const registerTenant = async (req, res) => {
 };
 
 export const adminLogin = async (req, res, next) => {
+
   try {
     const { slug } = req.params;
     const { email, password } = req.body;
-
-    const isMatch = await bcrypt.compare(password, hashedPassword)
-        if (!isMatch) {
-            return res.status(401).send('Incorrect password')
-        }
 
     console.log('body:', req.body);
     console.log('slug:', slug);

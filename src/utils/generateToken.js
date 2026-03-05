@@ -6,7 +6,7 @@ if (!ACCESS_TOKEN_SECRET) {
 }
 
 export const generateToken = (payload) => {
-    if (payload?.role === 'SUPERUSER') {
+    if (payload?.role === 'SUPERUSER'.toLowerCase()) {
     return jwt.sign({
       sub: payload.email,
       role: payload.role

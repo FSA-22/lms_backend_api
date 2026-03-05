@@ -18,31 +18,23 @@ import certificateRouter from './routes/certificate.route.js';
 import adminRouter from './routes/admin.route.js';
 import { globalLimiter } from './middlewares/limiter.middleware.js';
 
-const app = express();
+// Import ONLY your route for now (to isolate)
+import coursesRoutes from './routes/courses.routes.js';
 
-/*
-   Core Middlewares
-*/
+const app = express();
 
 app.use(globalLimiter);
 
-// Security headers
+// Security header
 app.use(helmet());
-
-// Enable CORS
-app.use(
-  cors({
-    origin: CLIENT_URL || '*',
-    credentials: true
-  })
-);
-
-// Body parsers
+app.use(cors({
+  origin: CLIENT_URL || '*',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Logger (dev only)
 if (NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
@@ -64,9 +56,7 @@ app.use('/api/v1/', studentDashboardRouter);
 app.use('/api/v1/', certificateRouter);
 app.use('/api/v1/', adminRouter);
 
-/*
-   404 Handler
-*/
+// 404 Handler (must be last)
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -74,12 +64,9 @@ app.use((req, res) => {
   });
 });
 
-/*
-   Global Error Handler
-*/
+// Global Error Handler
 app.use((err, req, res, next) => {
   console.error(err);
-
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error'

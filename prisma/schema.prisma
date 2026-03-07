@@ -198,12 +198,12 @@ model Progress {
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   course Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, lessonId])
+  @@index([tenantId, userId, courseId])
   @@index([tenantId])
   @@index([userId])
   @@index([lessonId])
   @@index([courseId])
+  @@unique([tenantId, userId, lessonId])
 }
 
 model Assessment {

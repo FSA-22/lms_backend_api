@@ -4,7 +4,8 @@ import {
   createQuestion,
   getAssessmentQuestions,
   updateQuestion,
-  deleteQuestion
+  deleteQuestion,
+  getAssessmentQuestionsForStudent
 } from '../controllers/assessmentQuestion.controller.js';
 
 import { authenticate } from '../middlewares/auth.middleware.js';
@@ -19,6 +20,13 @@ assessmentQuestionRouter.post(
   authenticate,
   authorize('INSTRUCTOR', 'ADMIN'),
   createQuestion
+);
+
+assessmentQuestionRouter.get(
+  '/:slug/assessments/:assessmentId/questions',
+  authenticate,
+  authorize('student'),
+  getAssessmentQuestionsForStudent
 );
 
 assessmentQuestionRouter.get(

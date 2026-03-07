@@ -107,3 +107,164 @@ export const deleteQuestion = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getAssessmentQuestionsForStudent = async (req, res, next) => {
+  try {
+    const { tenantId, id: userId } = req.user;
+    const { assessmentId } = req.params;
+
+    if (!assessmentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Assessment ID is required'
+      });
+    }
+
+    //  Validate assessment
+    const assessment = await prisma.assessment.findFirst({
+      where: {
+        id: assessmentId,
+        tenantId,
+        deletedAt: null
+      },
+      include: {
+        course: true
+      }
+    });
+
+    if (!assessment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assessment not found'
+      });
+    }
+
+    // 2️⃣ Ensure student is enrolled
+    const enrollment = await prisma.enrollment.findFirst({
+      where: {
+        userId,
+        courseId: assessment.courseId,
+        deletedAt: null
+      }
+    });
+
+    if (!enrollment) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not enrolled in this course'
+      });
+    }
+
+    // 3️⃣ Ensure lessons are completed before assessment
+    const [totalLessons, completedLessons] = await Promise.all([
+      prisma.lesson.count({
+        where: {
+          courseId: assessment.courseId,
+          tenantId,
+          deletedAt: null
+        }
+      }),
+
+      prisma.progress.count({
+        where: {
+          userId,
+          courseId: assessment.courseId,
+          tenantId,
+          completed: true,
+          deletedAt: null
+        }
+      })
+    ]);
+
+    if (totalLessons > 0 && completedLessons !== totalLessons) {
+      return res.status(403).json({
+        success: false,
+        message: 'Complete all lessons before taking the assessment'
+      });
+    }
+
+    // 4️⃣ Prevent access if assessment already submitted
+    const existingResult = await prisma.assessmentResult.findUnique({
+      where: {
+        assessmentId_userId: {
+          assessmentId,
+          userId
+        }
+      }
+    });
+
+    if (existingResult && !existingResult.deletedAt) {
+      return res.status(409).json({
+        success: false,
+        message: 'Assessment already submitted'
+      });
+    }
+
+    // 5️⃣ Get questions
+    const questions = await prisma.question.findMany({
+      where: {
+        assessmentId,
+        tenantId
+      },
+      include: {
+        options: {
+          select: {
+            id: true,
+            text: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    });
+
+    // 6️⃣ Get existing answers (for resume functionality)
+    const answers = await prisma.studentAnswer.findMany({
+      where: {
+        tenantId,
+        userId,
+        question: {
+          assessmentId
+        }
+      }
+    });
+
+    const answersMap = new Map(answers.map((a) => [a.questionId, a]));
+
+    // 7️⃣ Attach student's saved answers to questions
+    const formattedQuestions = questions.map((q) => {
+      const studentAnswer = answersMap.get(q.id);
+
+      return {
+        id: q.id,
+        question: q.question,
+        type: q.type,
+        marks: q.marks,
+
+        options: q.options,
+
+        studentAnswer: studentAnswer
+          ? {
+              selectedOptionId: studentAnswer.selectedOptionId,
+              textAnswer: studentAnswer.textAnswer
+            }
+          : null
+      };
+    });
+
+    res.json({
+      success: true,
+      assessment: {
+        id: assessment.id,
+        title: assessment.title,
+        description: assessment.description,
+        totalMarks: assessment.totalMarks
+      },
+      questionCount: formattedQuestions.length,
+      data: formattedQuestions
+    });
+  } catch (error) {
+    next(error);
+  }
+};

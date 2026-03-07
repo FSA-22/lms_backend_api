@@ -28,6 +28,8 @@ model Tenant {
   certificates      Certificate[]
   auditLogs         AuditLog[]
   refreshTokens     RefreshToken[]
+  questions         Question[]
+  studentAnswers    StudentAnswer[]
 
   @@index([slug])
 }
@@ -50,10 +52,11 @@ model User {
   progress    Progress[]
   roles       UserRole[]
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  certificates  Certificate[]
-  auditLogs     AuditLog[]
-  refreshTokens RefreshToken[]
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  certificates   Certificate[]
+  auditLogs      AuditLog[]
+  refreshTokens  RefreshToken[]
+  studentAnswers StudentAnswer[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -106,22 +109,58 @@ model Course {
 }
 
 model Lesson {
-  id        String    @id @default(uuid())
-  courseId  String
-  tenantId  String
-  title     String
-  content   String?
-  order     Int
+  id       String @id @default(uuid())
+  courseId String
+  tenantId String
+  title    String
+  order    Int
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  progress Progress[]
-  course   Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  contents    LessonContent[]
+  attachments LessonAttachment[]
+  progress    Progress[]
 
   @@unique([courseId, order])
   @@index([tenantId])
+}
+model LessonContent {
+  id       String @id @default(uuid())
+  lessonId String
+
+  type     LessonContentType
+  title    String?
+  text     String?
+  imageUrl String?
+  videoUrl String?
+
+  order Int
+
+  createdAt DateTime @default(now())
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+}
+
+model LessonAttachment {
+  id       String @id @default(uuid())
+  lessonId String
+
+  fileName String
+  fileUrl  String
+  fileSize Int?
+
+  createdAt DateTime @default(now())
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
 }
 
 model Enrollment {
@@ -177,12 +216,69 @@ model Assessment {
   createdAt  DateTime       @default(now())
   deletedAt  DateTime?
 
-  results AssessmentResult[]
-  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  course  Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  results   AssessmentResult[]
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  course    Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions Question[]
 
   @@index([tenantId])
   @@index([courseId])
+}
+
+model Question {
+  id           String @id @default(uuid())
+  assessmentId String
+  tenantId     String
+
+  question String
+  type     QuestionType
+  marks    Float
+
+  createdAt DateTime @default(now())
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  options QuestionOption[]
+  answers StudentAnswer[]
+
+  @@index([assessmentId])
+}
+
+model QuestionOption {
+  id         String @id @default(uuid())
+  questionId String
+
+  text      String
+  isCorrect Boolean @default(false)
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+}
+
+model StudentAnswer {
+  id         String @id @default(uuid())
+  tenantId   String
+  questionId String
+  userId     String
+
+  selectedOptionId String?
+  textAnswer       String?
+
+  isCorrect Boolean?
+  score     Float?
+
+  createdAt DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@index([userId])
+  @@unique([questionId, userId])
+
 }
 
 model AssessmentResult {
@@ -336,4 +432,19 @@ enum CourseStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum LessonContentType {
+  TEXT
+  VIDEO
+  IMAGE
+}
+
+enum QuestionType {
+  MCQ
+  MULTIPLE_SELECT
+  TRUE_FALSE
+  SHORT_TEXT
+  LONG_TEXT
+  FILE_UPLOAD
 }

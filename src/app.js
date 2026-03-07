@@ -7,7 +7,7 @@ import morgan from 'morgan';
 import { CLIENT_URL, NODE_ENV } from './config/env.js';
 import authRouter from './routes/auth.route.js';
 import userRouter from './routes/user.route.js';
-import courseRouters from './routes/course.route.js';
+import courseRouter from './routes/course.route.js';
 import enrollRouter from './routes/enrollment.route.js';
 import progressRouter from './routes/progress.route.js';
 import assessmentRouter from './routes/assessment.route.js';
@@ -16,10 +16,12 @@ import lessonsRouter from './routes/lesson.route.js';
 import studentDashboardRouter from './routes/studentDashboard.route.js';
 import certificateRouter from './routes/certificate.route.js';
 import adminRouter from './routes/admin.route.js';
-import { globalLimiter } from './middlewares/limiter.middleware.js';
+import lessonContentRouter from './routes/lessonContent.route.js';
+import lessonAttachmentRouter from './routes/lessonAttachment.route.js';
+import assessmentQuestionRouter from './routes/assessmentQuestion.route.js';
+import studentAnswerRouter from './routes/studentAnswer.route.js';
 
-// Import ONLY your route for now (to isolate)
-import coursesRoutes from './routes/courses.routes.js';
+import { globalLimiter } from './middlewares/limiter.middleware.js';
 
 const app = express();
 
@@ -27,10 +29,12 @@ app.use(globalLimiter);
 
 // Security header
 app.use(helmet());
-app.use(cors({
-  origin: CLIENT_URL || '*',
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: CLIENT_URL || '*',
+    credentials: true
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -46,15 +50,19 @@ if (NODE_ENV !== 'production') {
 app.use('/api/v1/auth', authRouter);
 
 app.use('/api/v1', userRouter);
-app.use('/api/v1/', courseRouters);
+app.use('/api/v1/', courseRouter);
 app.use('/api/v1/', enrollRouter);
 app.use('/api/v1/', progressRouter);
 app.use('/api/v1/', assessmentRouter);
+app.use('/api/v1/', assessmentQuestionRouter);
 app.use('/api/v1/', assessmentResultRoute);
 app.use('/api/v1/', lessonsRouter);
 app.use('/api/v1/', studentDashboardRouter);
 app.use('/api/v1/', certificateRouter);
 app.use('/api/v1/', adminRouter);
+app.use('/api/v1/', lessonContentRouter);
+app.use('/api/v1/', lessonAttachmentRouter);
+app.use('/api/v1/', studentAnswerRouter);
 
 // 404 Handler (must be last)
 app.use((req, res) => {

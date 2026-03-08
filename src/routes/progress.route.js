@@ -8,8 +8,8 @@ const progressRouter = Router();
 progressRouter.post(
   '/:slug/progress/lesson/:lessonId',
   authenticate,
-  authorize('STUDENT', 'SUPERUSER'),
-  markLessonProgress
+  authorize('STUDENT', 'SUPERUSER'.toLowerCase()),
+  markLessonCompleted
 );
 
 export default progressRouter;

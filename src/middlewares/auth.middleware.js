@@ -13,7 +13,7 @@ export const authenticate = async (req, res, next) => {
 
   // Verify token
   const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
-  if(decoded.role === 'SUPERUSER'){
+  if(decoded.role === 'SUPERUSER'.toLowerCase()){
     req.user = {
       ...decoded,
       roles: [decoded.role]

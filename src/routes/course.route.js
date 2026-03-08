@@ -16,7 +16,7 @@ courseRouter.post('/:slug/courses', authenticate, authorize('INSTRUCTOR', 'ADMIN
 courseRouter.get(
   '/:slug/courses',
   authenticate,
-  authorize('ADMIN', 'INSTRUCTOR', 'STUDENT', 'SUPERUSER'),
+  authorize('ADMIN', 'INSTRUCTOR', 'STUDENT', 'SUPERUSER'.toLowerCase()),
   getCourses
 );
 

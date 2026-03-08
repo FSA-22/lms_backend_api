@@ -7,6 +7,7 @@ import {
   deleteAssessment,
   getStudentAssessments
 } from '../controllers/assessment.controller.js';
+
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { authorize } from '../middlewares/authorize.middleware.js';
 

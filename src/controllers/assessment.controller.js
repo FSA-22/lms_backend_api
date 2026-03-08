@@ -1,19 +1,35 @@
 import { prisma } from '../lib/prisma.js';
 
-// ---------------- CREATE ASSESSMENT ----------------
-export const createAssessment1 = async (req, res, next) => {
+// ================= CREATE ASSESSMENT =================
+export const createAssessment = async (req, res, next) => {
   try {
     const { title, type, totalMarks } = req.body;
     const { tenantId, id: userId } = req.user;
     const { courseId } = req.params;
 
-    if (!courseId) return res.status(400).json({ message: 'Course ID is required' });
+    if (!courseId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Course ID is required'
+      });
+    }
 
-    // Verify instructor owns course
+    // verify instructor owns course
     const course = await prisma.course.findFirst({
-      where: { id: courseId, tenantId, instructorId: userId, deletedAt: null }
+      where: {
+        id: courseId,
+        tenantId,
+        instructorId: userId,
+        deletedAt: null
+      }
     });
-    if (!course) return res.status(404).json({ message: 'Course not found or not yours' });
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found or not owned by instructor'
+      });
+    }
 
     const assessment = await prisma.assessment.create({
       data: {
@@ -25,84 +41,88 @@ export const createAssessment1 = async (req, res, next) => {
       }
     });
 
-    res.status(201).json({ success: true, data: assessment });
+    res.status(201).json({
+      success: true,
+      data: assessment
+    });
   } catch (error) {
     next(error);
   }
 };
 
-export const createAssessment = async (req, res, next) => {
-  try {
-    const { title, type, totalMarks } = req.body;
-    const { tenantId, id: userId } = req.user;
-    const { courseId } = req.params;
-
-    if (!courseId)
-      return res.status(400).json({ success: false, message: 'Course ID is required' });
-
-    // Verify instructor owns course
-    const course = await prisma.course.findFirst({
-      where: { id: courseId, tenantId, instructorId: userId, deletedAt: null }
-    });
-    if (!course)
-      return res.status(404).json({ success: false, message: 'Course not found or not yours' });
-
-    const assessment = await prisma.assessment.create({
-      data: { tenantId, courseId, title, type, totalMarks }
-    });
-
-    res.status(201).json({ success: true, data: assessment });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ---------------- GET ALL ASSESSMENTS ----------------
+// ================= GET ASSESSMENTS FOR COURSE =================
 export const getAssessments = async (req, res, next) => {
   try {
-    const { tenantId, id: userId, roles } = req.user;
+    const { tenantId } = req.user;
     const { courseId } = req.params;
 
-    // If instructor, filter by own courses
-    let where = { tenantId, deletedAt: null };
-    if (roles.includes('INSTRUCTOR')) where.courseId = courseId;
-
     const assessments = await prisma.assessment.findMany({
-      where,
+      where: {
+        tenantId,
+        courseId,
+        deletedAt: null
+      },
       include: {
-        course: { select: { id: true, title: true } }
+        course: {
+          select: {
+            id: true,
+            title: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
 
-    res.json({ success: true, data: assessments });
+    res.json({
+      success: true,
+      count: assessments.length,
+      data: assessments
+    });
   } catch (error) {
     next(error);
   }
 };
 
-// ---------------- GET ASSESSMENT BY ID ----------------
+// ================= GET ASSESSMENT BY ID =================
+
 export const getAssessmentById = async (req, res, next) => {
   try {
-    const { tenantId, id: userId, roles } = req.user;
+    const { tenantId, id: userId } = req.user;
     const { assessmentId } = req.params;
 
     const assessment = await prisma.assessment.findFirst({
-      where: { id: assessmentId, tenantId, deletedAt: null },
-      include: { course: true, results: { where: { deletedAt: null } } }
+      where: {
+        id: assessmentId,
+        tenantId,
+        deletedAt: null
+      },
+      include: {
+        course: true,
+        results: {
+          where: { deletedAt: null }
+        }
+      }
     });
-    if (!assessment) return res.status(404).json({ message: 'Assessment not found' });
 
-    // Instructor can only access own course assessments
-    if (roles.includes('INSTRUCTOR') && assessment.course.instructorId !== userId)
-      return res.status(403).json({ message: 'Not allowed to view this assessment' });
+    if (!assessment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assessment not found'
+      });
+    }
 
-    res.json({ success: true, data: assessment });
+    res.json({
+      success: true,
+      data: assessment
+    });
   } catch (error) {
     next(error);
   }
 };
 
-// ---------------- UPDATE ASSESSMENT ----------------
+// ================= UPDATE ASSESSMENT =================
 export const updateAssessment = async (req, res, next) => {
   try {
     const { tenantId, id: userId } = req.user;
@@ -110,22 +130,39 @@ export const updateAssessment = async (req, res, next) => {
     const { title, type, totalMarks } = req.body;
 
     const assessment = await prisma.assessment.findFirst({
-      where: { id: assessmentId, tenantId, deletedAt: null },
+      where: {
+        id: assessmentId,
+        tenantId,
+        deletedAt: null
+      },
       include: { course: true }
     });
-    if (!assessment) return res.status(404).json({ message: 'Assessment not found' });
 
-    if (assessment.course.instructorId !== userId)
-      return res.status(403).json({ message: 'Not allowed to update this assessment' });
+    if (!assessment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assessment not found'
+      });
+    }
 
-    // Build partial update object dynamically
+    if (assessment.course.instructorId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not allowed to update this assessment'
+      });
+    }
+
     const updateData = {};
+
     if (title !== undefined) updateData.title = title;
     if (type !== undefined) updateData.type = type;
     if (totalMarks !== undefined) updateData.totalMarks = totalMarks;
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ message: 'No valid fields provided for update' });
+      return res.status(400).json({
+        success: false,
+        message: 'No valid fields provided for update'
+      });
     }
 
     const updated = await prisma.assessment.update({
@@ -133,69 +170,131 @@ export const updateAssessment = async (req, res, next) => {
       data: updateData
     });
 
-    res.json({ success: true, data: updated });
+    res.json({
+      success: true,
+      data: updated
+    });
   } catch (error) {
     next(error);
   }
 };
-// ---------------- DELETE ASSESSMENT (SOFT DELETE) ----------------
+
+// ================= DELETE ASSESSMENT (SOFT DELETE) =================
 export const deleteAssessment = async (req, res, next) => {
   try {
-    const { tenantId, id: userId, roles } = req.user;
+    const { tenantId, id: userId } = req.user;
     const { assessmentId } = req.params;
 
-    // if (!roles.includes('INSTRUCTOR')) return res.status(403).json({ message: 'Unauthorized' });
-
     const assessment = await prisma.assessment.findFirst({
-      where: { id: assessmentId, tenantId, deletedAt: null },
+      where: {
+        id: assessmentId,
+        tenantId,
+        deletedAt: null
+      },
       include: { course: true }
     });
-    if (!assessment) return res.status(404).json({ message: 'Assessment not found' });
 
-    if (assessment.course.instructorId !== userId)
-      return res.status(403).json({ message: 'Not allowed to delete this assessment' });
+    if (!assessment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assessment not found'
+      });
+    }
 
-    // Soft delete transaction
+    if (assessment.course.instructorId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not allowed to delete this assessment'
+      });
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.assessmentResult.updateMany({
-        where: { assessmentId, deletedAt: null },
-        data: { deletedAt: new Date() }
+        where: {
+          assessmentId,
+          deletedAt: null
+        },
+        data: {
+          deletedAt: new Date()
+        }
       });
+
+      await tx.question.updateMany({
+        where: {
+          assessmentId,
+          deletedAt: null
+        },
+        data: {
+          deletedAt: new Date()
+        }
+      });
+
       await tx.assessment.update({
         where: { id: assessmentId },
-        data: { deletedAt: new Date() }
+        data: {
+          deletedAt: new Date()
+        }
       });
     });
 
-    res.json({ success: true, message: 'Assessment deleted successfully (soft delete)' });
+    res.json({
+      success: true,
+      message: 'Assessment deleted successfully'
+    });
   } catch (error) {
     next(error);
   }
 };
 
+// ================= STUDENT ACCESS ASSESSMENTS =================
 export const getStudentAssessments = async (req, res, next) => {
   try {
     const { tenantId, id: userId } = req.user;
     const { courseId } = req.params;
 
-    // Check if student completed all lessons first
-    const totalLessons = await prisma.lesson.count({
-      where: { courseId, tenantId, deletedAt: null }
-    });
-    const completedLessons = await prisma.progress.count({
-      where: { courseId, tenantId, userId, completed: true, deletedAt: null }
-    });
+    const [totalLessons, completedLessons] = await Promise.all([
+      prisma.lesson.count({
+        where: {
+          courseId,
+          tenantId,
+          deletedAt: null
+        }
+      }),
+
+      prisma.progress.count({
+        where: {
+          courseId,
+          tenantId,
+          userId,
+          completed: true,
+          deletedAt: null
+        }
+      })
+    ]);
 
     if (totalLessons > 0 && completedLessons !== totalLessons) {
-      return res.status(403).json({ message: 'Complete all lessons before accessing assessments' });
+      return res.status(403).json({
+        success: false,
+        message: 'Complete all lessons before accessing assessments'
+      });
     }
 
-    // Fetch assessments
     const assessments = await prisma.assessment.findMany({
-      where: { courseId, tenantId, deletedAt: null }
+      where: {
+        courseId,
+        tenantId,
+        deletedAt: null
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
 
-    res.json({ success: true, data: assessments });
+    res.json({
+      success: true,
+      count: assessments.length,
+      data: assessments
+    });
   } catch (error) {
     next(error);
   }

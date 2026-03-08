@@ -182,8 +182,8 @@ export const listCourses = async (req, res, next) => {
 
 export const approveCourse = async (req, res, next) => {
   try {
-    const { tenantId } = req.user;
     const { courseId } = req.params;
+    const { tenantId, id: userId, roles } = req.user;
 
     if (!courseId) {
       return res.status(400).json({
@@ -192,31 +192,56 @@ export const approveCourse = async (req, res, next) => {
       });
     }
 
-    const result = await prisma.course.updateMany({
-      where: {
-        id: courseId, // NOT courseId
-        tenantId: tenantId
-      },
-      data: {
-        status: 'APPROVED'
-      }
-    });
-
-    if (result.count === 0) {
-      return res.status(404).json({
+    // Only admin-level roles can approve
+    if (!roles.includes('ADMIN') && !roles.includes('SUPERUSER')) {
+      return res.status(403).json({
         success: false,
-        message: 'Course not found or does not belong to tenant'
+        message: 'Not authorized to approve courses'
       });
     }
 
+    const course = await prisma.course.findFirst({
+      where: {
+        id: courseId,
+        tenantId,
+        deletedAt: null
+      }
+    });
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    // Prevent approving an already approved course
+    if (course.status === 'APPROVED') {
+      return res.status(409).json({
+        success: false,
+        message: 'Course already approved'
+      });
+    }
+
+    const updatedCourse = await prisma.course.update({
+      where: { id: courseId },
+      data: {
+        status: 'APPROVED',
+        approvedBy: userId,
+        approvedAt: new Date()
+      }
+    });
+
     return res.status(200).json({
       success: true,
-      message: 'Course approved'
+      message: 'Course approved successfully',
+      data: updatedCourse
     });
   } catch (error) {
     next(error);
   }
 };
+
 export const getEnrollmentStats = async (req, res, next) => {
   try {
     const { tenantId } = req.user;

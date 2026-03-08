@@ -13,7 +13,7 @@ const authRouter = Router();
 
 authRouter.post('/register-org', authLimiter, registerTenant);
 
-authRouter.post('/:slug/:role/login', authLimiter, login);
+authRouter.post('/:slug/login', authLimiter, login);
 
 authRouter.post('/:slug/logout', authLimiter, authenticate, logout);
 

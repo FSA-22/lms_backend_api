@@ -1,10 +1,20 @@
 export const authorize = (...allowedRoles) => {
   return (req, res, next) => {
-    console.log('req.user.roles', req.user.roles);
+    const userRoles = req.user?.roles || [];
 
-    const hasRole = req.user.roles.some((r) => allowedRoles.includes(r));
+    // SUPERUSER bypass
+    const isSuperUser = userRoles.includes('SUPERUSER');
 
-    if (!hasRole) return res.status(403).json({ message: 'Forbidden' });
+    if (isSuperUser) return next();
+
+    const hasRole = userRoles.some((role) => allowedRoles.includes(role));
+
+    if (!hasRole) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden'
+      });
+    }
 
     next();
   };

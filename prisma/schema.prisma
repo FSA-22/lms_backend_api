@@ -93,6 +93,10 @@ model Course {
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
+  approvedBy  String?
+  approvedAt  DateTime?
+
+
   status CourseStatus @default(PENDING)
 
   assessments Assessment[]

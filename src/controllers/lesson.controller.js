@@ -4,7 +4,6 @@ export const createLesson = async (req, res, next) => {
   try {
     const { title, content } = req.body;
     const { courseId } = req.params;
-    // const tenantId = req.tenant.id;
     const tenantId = req.user.tenantId;
     const userId = req.user.id;
     const roles = req.user.roles;

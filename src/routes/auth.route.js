@@ -3,13 +3,16 @@ import {
   login,
   logout,
   refreshAccessToken,
-  registerTenant
+  registerTenant,
+  superUserLogin
 } from '../controllers/auth.controller.js';
 import { registerInstructor, registerStudent } from '../controllers/auth.controller.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { authLimiter } from '../middlewares/limiter.middleware.js';
 
 const authRouter = Router();
+
+authRouter.post('/superuser/login', authLimiter, superUserLogin);
 
 authRouter.post('/register-org', authLimiter, registerTenant);
 

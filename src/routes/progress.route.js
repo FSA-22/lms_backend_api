@@ -9,7 +9,7 @@ progressRouter.post(
   '/:slug/progress/lesson/:lessonId',
   authenticate,
   authorize('STUDENT', 'SUPERUSER'.toLowerCase()),
-  markLessonCompleted
+  markLessonProgress
 );
 
 export default progressRouter;

@@ -3,7 +3,6 @@ import { prisma } from '../lib/prisma.js';
 export const getDashboardOverview = async (req, res, next) => {
   try {
     const { tenantId } = req.user;
-    console.log('Fetching dashboard overview for tenantId:', tenantId);
 
     const [totalUsers, totalCourses, totalEnrollments, totalCertificates] = await Promise.all([
       prisma.user.count({ where: { tenantId } }),

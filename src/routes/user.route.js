@@ -8,11 +8,8 @@ import {
   deactivateUser
 } from '../controllers/user.controller.js';
 import { authorize } from '../middlewares/authorize.middleware.js';
-import { superUserLogin } from '../controllers/auth.controller.js';
 
 const userRouter = Router();
-
-userRouter.post('/superuser/login', superUserLogin);
 
 userRouter.get('/:slug/me', authenticate, getCurrentUser);
 

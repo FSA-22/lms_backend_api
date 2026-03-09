@@ -129,17 +129,66 @@ export const updateTenantSubscription = async (req, res, next) => {
     const { tenantId } = req.params;
     const { planId, status, expiresAt } = req.body;
 
-    const subscription = await prisma.subscription.upsert({
-      where: { tenantId },
-      update: { planId, status, expiresAt },
-      create: { tenantId, planId, status, expiresAt }
+    if (!planId) {
+      return res.status(400).json({
+        success: false,
+        message: 'planId is required'
+      });
+    }
+
+    // ensure tenant exists
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId }
     });
 
-    res.json({ success: true, data: subscription });
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tenant not found'
+      });
+    }
+
+    // ensure plan exists
+    const plan = await prisma.plan.findUnique({
+      where: { id: planId }
+    });
+
+    if (!plan) {
+      return res.status(404).json({
+        success: false,
+        message: 'Plan not found'
+      });
+    }
+
+    const subscription = await prisma.subscription.upsert({
+      where: {
+        tenantId
+      },
+      update: {
+        planId,
+        status: status || SubscriptionStatus.ACTIVE,
+        expiresAt: expiresAt ? new Date(expiresAt) : null
+      },
+      create: {
+        tenantId,
+        planId,
+        status: status || SubscriptionStatus.ACTIVE,
+        expiresAt: expiresAt ? new Date(expiresAt) : null
+      },
+      include: {
+        plan: true
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: subscription
+    });
   } catch (err) {
     next(err);
   }
 };
+//
 
 // PLATFORM USERS
 export const getPlatformUsers = async (req, res, next) => {

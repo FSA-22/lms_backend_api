@@ -1,5 +1,6 @@
 import { PORT, NODE_ENV } from './config/env.js';
 import app from './app.js';
+import { connectToDB, disConnectFromDB } from './databases/index.js';
 
 // 1. CATCH BUGS IN CODE (Synchronous)
 process.on('uncaughtException', (err) => {
@@ -9,7 +10,9 @@ process.on('uncaughtException', (err) => {
 });
 
 // 2. START THE SERVER
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
+  await connectToDB();
+
   console.log(`Server running on port ${PORT} | Env: ${NODE_ENV}`);
 });
 
@@ -21,3 +24,24 @@ process.on('unhandledRejection', (err) => {
     process.exit(1);
   });
 });
+
+/*
+   Graceful Shutdown
+*/
+
+const shutdown = (signal) => {
+  console.log(`\n${signal} received. Shutting down gracefully...`);
+
+  server.close(async () => {
+    console.log('HTTP server closed.');
+    await disConnectFromDB();
+
+    process.exit(0);
+  });
+
+  // Force shutdown after timeout
+  setTimeout(() => {
+    console.error('Forcefully shutting down...');
+    process.exit(1);
+  }, 10000);
+};

@@ -1,14 +1,28 @@
-import http from 'http';
-import app from './app.js';
 import { PORT, NODE_ENV } from './config/env.js';
+import app from './app.js';
 import { connectToDB, disConnectFromDB } from './databases/index.js';
 
-const server = http.createServer(app);
+// 1. CATCH BUGS IN CODE (Synchronous)
+process.on('uncaughtException', (err) => {
+  console.log('UNCAUGHT EXCEPTION! Shutting down...');
+  console.log(err.name, err.message);
+  process.exit(1);
+});
 
-server.listen(PORT, async () => {
+// 2. START THE SERVER
+const server = app.listen(PORT, async () => {
   await connectToDB();
 
   console.log(`Server running on port ${PORT} | Env: ${NODE_ENV}`);
+});
+
+// 3. CATCH BROKEN CONNECTIONS (Asynchronous)
+process.on('unhandledRejection', (err) => {
+  console.log('UNHANDLED REJECTION! Shutting down...');
+  console.log(err.name, err.message);
+  server.close(() => {
+    process.exit(1);
+  });
 });
 
 /*
@@ -31,20 +45,3 @@ const shutdown = (signal) => {
     process.exit(1);
   }, 10000);
 };
-
-/*
-   Process Event Listeners
-*/
-
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
-
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-  shutdown('uncaughtException');
-});
-
-process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled Rejection:', reason);
-  shutdown('unhandledRejection');
-});

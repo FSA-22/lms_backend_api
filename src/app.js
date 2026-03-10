@@ -3,8 +3,11 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import { CLIENT_URL, NODE_ENV, PORT } from './config/env.js';
+import AppError from './utils/appError.js';
+import errorMiddleware from './middlewares/errorMiddleware.js';
 
-import { CLIENT_URL, NODE_ENV } from './config/env.js';
+
 
 import superuserRouter from './routes/superUser.route.js';
 
@@ -68,6 +71,37 @@ app.use('/api/v1/', lessonContentRouter);
 app.use('/api/v1/', lessonAttachmentRouter);
 app.use('/api/v1/', studentAnswerRouter);
 
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: `API is running on port ${5000}`,
+    uptime: process.uptime(),
+    timestamp: new Date(),
+    serverIPs: ips
+  });
+});
+
+//*404 Handler
+//app.use((req, res) => {
+  //res.status(404).json({
+    //success: false,
+    //message: 'Route not found'
+  //});
+//});
+
+app.use((req, res, next) => {
+  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+});
+
+// Global Error Handler
+//app.use((err, req, res, next) => {
+  //console.error(err);
+
+  //res.status(err.status || 500).json({
+    //success: false,
+    //message: err.message || 'Internal Server Error'
+  //});
+//});
 // 404 Handler (must be last)
 app.use((req, res) => {
   res.status(404).json({
@@ -85,4 +119,5 @@ app.use((err, req, res, next) => {
   });
 });
 
+app.use(errorMiddleware);
 export default app;

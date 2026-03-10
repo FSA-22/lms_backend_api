@@ -1,29 +1,89 @@
 import { Router } from 'express';
+
 import {
   login,
   logout,
   refreshAccessToken,
   registerTenant,
-  superUserLogin
+  superUserLogin,
+  registerInstructor,
+  registerStudent
 } from '../controllers/auth.controller.js';
-import { registerInstructor, registerStudent } from '../controllers/auth.controller.js';
+
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { authLimiter } from '../middlewares/limiter.middleware.js';
+import { validateRequest } from '../middlewares/validateRequest.middleware.js';
+
+import {
+  loginSchema,
+  registerTenantSchema,
+  registerInstructorSchema,
+  registerStudentSchema,
+  refreshTokenSchema
+} from '../validators/auth.validator.js';
 
 const authRouter = Router();
 
-authRouter.post('/superuser/login', authLimiter, superUserLogin);
+/*
+| SUPERUSER AUTH
+*/
 
-authRouter.post('/register-org', authLimiter, registerTenant);
+authRouter.post('/superuser/login', authLimiter, validateRequest(loginSchema), superUserLogin);
 
-authRouter.post('/:slug/login', authLimiter, login);
+/*
+| ORGANIZATION REGISTRATION
+*/
+
+authRouter.post(
+  '/register-org',
+  authLimiter,
+  validateRequest(registerTenantSchema),
+  registerTenant
+);
+
+/*
+| TENANT LOGIN
+*/
+
+authRouter.post('/:slug/login', authLimiter, validateRequest(loginSchema), login);
+
+/*
+| TENANT LOGOUT
+*/
 
 authRouter.post('/:slug/logout', authLimiter, authenticate, logout);
 
-authRouter.post('/:slug/register/instructor', authLimiter, registerInstructor);
+/*
+| REGISTER INSTRUCTOR
+*/
 
-authRouter.post('/:slug/register/student', authLimiter, registerStudent);
+authRouter.post(
+  '/:slug/register/instructor',
+  authLimiter,
+  validateRequest(registerInstructorSchema),
+  registerInstructor
+);
 
-authRouter.post('/:slug/refresh', authLimiter, refreshAccessToken);
+/*
+| REGISTER STUDENT
+*/
+
+authRouter.post(
+  '/:slug/register/student',
+  authLimiter,
+  validateRequest(registerStudentSchema),
+  registerStudent
+);
+
+/*
+| REFRESH ACCESS TOKEN
+*/
+
+authRouter.post(
+  '/:slug/refresh',
+  authLimiter,
+  validateRequest(refreshTokenSchema),
+  refreshAccessToken
+);
 
 export default authRouter;

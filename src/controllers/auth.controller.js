@@ -2,8 +2,8 @@ import bcrypt from 'bcryptjs';
 import { NODE_ENV } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { generateSlug } from '../utils/slugify.js';
-import { generateToken } from '../Utils/generateToken.js';
-import { hashToken } from '../Utils/hashToken.js';
+import { generateToken } from '../utils/generateToken.js';
+import { hashToken } from '../utils/hashToken.js';
 import crypto from 'crypto';
 
 export const superUserLogin = async (req, res, next) => {

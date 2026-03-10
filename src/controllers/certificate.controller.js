@@ -146,6 +146,7 @@ export const getUserCertificates = async (req, res, next) => {
     next(error);
   }
 };
+
 /** 🔹 Get all certificates for a course */
 export const getCourseCertificates = async (req, res, next) => {
   try {
@@ -173,22 +174,40 @@ export const getSingleCertificate = async (req, res, next) => {
     const { slug, certificateId } = req.params;
     const { tenantId } = req.user;
 
+    // Verify tenant
     const tenant = await prisma.tenant.findUnique({ where: { slug } });
     if (!tenant || tenant.id !== tenantId) throw new Error('INVALID_TENANT');
 
+    // Fetch the certificate
     const certificate = await prisma.certificate.findUnique({
       where: { id: certificateId },
-      include: { user: true, course: true, issuedByUser: true }
+      include: {
+        user: true, // certificate owner
+        course: true, // course details
+        tenant: true // optional: tenant info
+      }
     });
 
     if (!certificate)
       return res.status(404).json({ success: false, message: 'Certificate not found' });
-    return res.json({ success: true, data: certificate });
+
+    // Fetch the issuing user manually
+    const issuedByUser = await prisma.user.findUnique({
+      where: { id: certificate.issuedBy },
+      select: { id: true, firstName: true, lastName: true, email: true }
+    });
+
+    // Add issuedByUser to the response
+    const certificateWithIssuer = {
+      ...certificate,
+      issuedByUser: issuedByUser || null
+    };
+
+    return res.json({ success: true, data: certificateWithIssuer });
   } catch (error) {
     next(error);
   }
 };
-
 /** 🔹 Revoke certificate */
 export const revokeCertificate = async (req, res, next) => {
   try {

@@ -108,21 +108,44 @@ export const getUserCertificates = async (req, res, next) => {
     const { slug, userId } = req.params;
     const { tenantId } = req.user;
 
+    // Verify tenant
     const tenant = await prisma.tenant.findUnique({ where: { slug } });
     if (!tenant || tenant.id !== tenantId) throw new Error('INVALID_TENANT');
 
+    // Fetch certificates
     const certificates = await prisma.certificate.findMany({
       where: { userId, tenantId },
-      include: { course: true, issuedByUser: true },
+      include: {
+        course: true, // include course details
+        tenant: true, // optional: include tenant info
+        user: true // include the certificate owner
+      },
       orderBy: { issuedAt: 'desc' }
     });
 
-    return res.json({ success: true, count: certificates.length, data: certificates });
+    // Optionally, fetch issuedBy user manually
+    const issuedByIds = [...new Set(certificates.map((c) => c.issuedBy))];
+    const issuedByUsers = await prisma.user.findMany({
+      where: { id: { in: issuedByIds } },
+      select: { id: true, firstName: true, lastName: true, email: true }
+    });
+
+    // Map issuedBy info to certificates
+    const issuedByMap = Object.fromEntries(issuedByUsers.map((u) => [u.id, u]));
+    const certificatesWithIssuer = certificates.map((c) => ({
+      ...c,
+      issuedByUser: issuedByMap[c.issuedBy] || null
+    }));
+
+    return res.json({
+      success: true,
+      count: certificatesWithIssuer.length,
+      data: certificatesWithIssuer
+    });
   } catch (error) {
     next(error);
   }
 };
-
 /** 🔹 Get all certificates for a course */
 export const getCourseCertificates = async (req, res, next) => {
   try {

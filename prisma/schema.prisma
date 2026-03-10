@@ -342,6 +342,7 @@ model AuditLog {
   createdAt  DateTime @default(now())
   Tenant     Tenant   @relation(fields: [tenantId], references: [id])
   user       User?    @relation(fields: [userId], references: [id])
+  
 
   @@index([tenantId])
   @@index([userId])

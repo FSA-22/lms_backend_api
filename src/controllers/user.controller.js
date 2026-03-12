@@ -35,19 +35,6 @@ export const getCurrentUser = async (req, res, next) => {
   }
 };
 
-// export const getAllUsers = async (req, res) => {
-//   const { tenantId } = req.user;
-
-//   const users = await prisma.user.findMany({
-//     where: { tenantId },
-//     include: {
-//       roles: { include: { role: true } }
-//     }
-//   });
-
-//   res.json(users);
-// };
-
 export const getAllUsers = async (req, res, next) => {
   try {
     const { tenantId } = req.user;

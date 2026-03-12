@@ -140,7 +140,7 @@ export const deleteLessonContent = async (req, res, next) => {
       where: { id: contentId }
     });
 
-    res.status(200).json({ message: 'Lesson content deleted' });
+    res.status(204).json({ message: 'Lesson content deleted' });
   } catch (error) {
     next(error);
   }

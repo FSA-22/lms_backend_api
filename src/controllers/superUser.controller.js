@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { generateToken } from '../utils/generateToken.js';
+import bcrypt from 'bcryptjs';
 
 // PLATFORM OVERVIEW
 export const getPlatformOverview = async (req, res, next) => {
@@ -79,15 +80,58 @@ export const getTenantDetails = async (req, res, next) => {
 
 export const createTenant = async (req, res, next) => {
   try {
-    const { name, slug } = req.body;
-    if (!name || !slug)
-      return res.status(400).json({ success: false, message: 'Name and slug required' });
+    const { name, slug, admin } = req.body;
+
+    if (!name || !slug || !admin?.email || !admin?.password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant name, slug and admin credentials required'
+      });
+    }
 
     const existing = await prisma.tenant.findUnique({ where: { slug } });
-    if (existing) return res.status(409).json({ success: false, message: 'Slug already exists' });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: 'Slug already exists'
+      });
+    }
 
-    const tenant = await prisma.tenant.create({ data: { name, slug } });
-    res.status(201).json({ success: true, data: tenant });
+    const result = await prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: { name, slug }
+      });
+
+      const hashedPassword = await bcrypt.hash(admin.password, 12);
+
+      const user = await tx.user.create({
+        data: {
+          tenantId: tenant.id,
+          firstName: admin.firstName,
+          lastName: admin.lastName,
+          email: admin.email,
+          password: hashedPassword
+        }
+      });
+
+      const adminRole = await tx.role.findUnique({
+        where: { name: 'ADMIN' }
+      });
+
+      await tx.UserRole.create({
+        data: {
+          userId: user.id,
+          roleId: adminRole.id
+        }
+      });
+
+      return { tenant, user };
+    });
+
+    res.status(201).json({
+      success: true,
+      data: result
+    });
   } catch (err) {
     next(err);
   }
@@ -117,7 +161,7 @@ export const deleteTenant = async (req, res, next) => {
   try {
     const { tenantId } = req.params;
     await prisma.tenant.update({ where: { id: tenantId }, data: { deletedAt: new Date() } });
-    res.json({ success: true, message: 'Tenant deleted (soft delete)' });
+    res.status(200).json({ success: true, message: 'Tenant deleted (soft delete)' });
   } catch (err) {
     next(err);
   }

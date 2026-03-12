@@ -19,6 +19,7 @@ const superuserRouter = Router();
 superuserRouter.get('/:slug/overview', authenticate, authorize('SUPERUSER'), getPlatformOverview);
 
 superuserRouter.get('/:slug/tenants', authenticate, authorize('SUPERUSER'), listTenants);
+
 superuserRouter.get(
   '/:slug/tenants/:tenantId',
   authenticate,
@@ -34,6 +35,7 @@ superuserRouter.patch(
   authorize('SUPERUSER'),
   suspendTenant
 );
+
 superuserRouter.patch(
   '/:slug/tenants/:tenantId/activate',
   authenticate,

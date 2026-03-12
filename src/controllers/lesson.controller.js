@@ -218,7 +218,7 @@ export const deleteLesson = async (req, res, next) => {
       data: { deletedAt: new Date() }
     });
 
-    res.status(200).json({ message: 'Lesson deleted' });
+    res.status(204).json({ message: 'Lesson deleted' });
   } catch (error) {
     next(error);
   }

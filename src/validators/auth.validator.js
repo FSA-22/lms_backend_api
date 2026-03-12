@@ -4,7 +4,7 @@ import { z } from 'zod';
 | COMMON VALIDATORS
 */
 
-const slugSchema = z
+export const slugSchema = z
   .string({
     required_error: 'Tenant slug is required',
     invalid_type_error: 'Slug must be a string'

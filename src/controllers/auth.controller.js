@@ -2,8 +2,8 @@ import bcrypt from 'bcryptjs';
 import { NODE_ENV } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { generateSlug } from '../utils/slugify.js';
-import { generateToken } from '../Utils/generateToken.js';
-import { hashToken } from '../Utils/hashToken.js';
+import { generateToken } from '../utils/generateToken.js';
+import { hashToken } from '../utils/hashToken.js';
 import crypto from 'crypto';
 
 export const superUserLogin = async (req, res, next) => {
@@ -19,7 +19,7 @@ export const superUserLogin = async (req, res, next) => {
         roles: {
           some: {
             role: {
-              name: 'SUPER_ADMIN'
+              name: 'SUPERUSER'
             }
           }
         }
@@ -38,7 +38,7 @@ export const superUserLogin = async (req, res, next) => {
 
     const accessToken = generateToken({
       userId: user.id,
-      roles: ['SUPER_ADMIN']
+      roles: ['SUPERUSER']
     });
 
     return res.status(200).json({
@@ -52,9 +52,6 @@ export const superUserLogin = async (req, res, next) => {
 
 export const registerTenant = async (req, res) => {
   const { companyName, firstName, lastName, email, password } = req.body;
-
-  console.log(req.body);
-  console.log('🔥 Tenant register hit');
 
   try {
     // 1. Generate slug
